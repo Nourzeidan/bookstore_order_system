@@ -23,3 +23,4 @@ app.get('/', (req, res) => res.redirect('/admin/dashboard'));
 
 // Start server
 app.listen(3000, () => console.log('Server running at http://localhost:3000'));
+

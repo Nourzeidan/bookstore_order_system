@@ -76,3 +76,4 @@ exports.reports = async (req, res) => {
   // Later: fetch from database using orderModel
   res.render('admin/reports', { totalSalesMonth, topCustomers, topBooks });
 };
+
