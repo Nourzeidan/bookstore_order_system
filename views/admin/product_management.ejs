@@ -1,0 +1,105 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Product Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-5">
+  <h3 class="mb-4">Add / Update Book</h3>
+  <form class="row g-3">
+
+    <div class="col-md-4">
+      <label for="isbn" class="form-label">ISBN</label>
+      <input type="text" class="form-control" id="isbn" placeholder="ISBN">
+    </div>
+
+    <div class="col-md-8">
+      <label for="title" class="form-label">Title</label>
+      <input type="text" class="form-control" id="title" placeholder="Book Title">
+    </div>
+
+    <div class="col-md-6">
+      <label for="author" class="form-label">Author(s)</label>
+      <input type="text" class="form-control" id="author" placeholder="Author names">
+    </div>
+
+    <div class="col-md-6">
+      <label for="publisher" class="form-label">Publisher</label>
+      <input type="text" class="form-control" id="publisher" placeholder="Publisher">
+    </div>
+
+    <div class="col-md-3">
+      <label for="year" class="form-label">Year</label>
+      <input type="number" class="form-control" id="year" placeholder="Publication Year">
+    </div>
+
+    <div class="col-md-3">
+      <label for="price" class="form-label">Price</label>
+      <input type="number" class="form-control" id="price" placeholder="Price">
+    </div>
+
+    <div class="col-md-3">
+      <label for="stock" class="form-label">Stock</label>
+      <input type="number" class="form-control" id="stock" placeholder="Quantity in stock">
+    </div>
+
+    <div class="col-md-3">
+      <label for="threshold" class="form-label">Threshold</label>
+      <input type="number" class="form-control" id="threshold" placeholder="Minimum threshold">
+    </div>
+
+    <div class="col-md-6">
+      <label for="category" class="form-label">Category</label>
+      <select class="form-select" id="category">
+        <option>Science</option>
+        <option>Art</option>
+        <option>Religion</option>
+        <option>History</option>
+        <option>Geography</option>
+      </select>
+    </div>
+
+    <div class="col-12">
+      <button type="submit" class="btn btn-success">Save Book</button>
+    </div>
+
+  </form>
+
+  <hr class="my-5">
+
+  <h4>Existing Books</h4>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>ISBN</th>
+          <th>Title</th>
+          <th>Stock</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>---</td>
+          <td>---</td>
+          <td>---</td>
+          <td>OK / Below Threshold</td>
+          <td>
+            <button class="btn btn-sm btn-primary">Confirm Order</button>
+          </td>
+        </tr>
+        <!-- Add more rows dynamically from DB -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
