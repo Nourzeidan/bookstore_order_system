@@ -1,104 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Product Management</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<title>Manage Books</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 
-<!-- Navbar (same style as Reports) -->
+<!-- Navigation -->
 <nav class="navbar navbar-dark bg-dark">
   <div class="container-fluid">
-    <span class="navbar-brand">Admin – Product Management</span>
+    <span class="navbar-brand mb-0 h1">Bookstore Admin</span>
     <a href="/admin/dashboard" class="btn btn-outline-light btn-sm ms-2">Dashboard</a>
+    <a href="/admin/products" class="btn btn-outline-light btn-sm ms-2">Manage Books</a>
     <a href="/admin/reports" class="btn btn-outline-light btn-sm ms-2">Reports</a>
+    <a href="/logout" class="btn btn-outline-light btn-sm ms-auto">Logout</a>
   </div>
 </nav>
 
 <div class="container mt-5">
+  <h3 class="mb-4">Add / Update Book</h3>
 
-  <!-- ================= ADD BOOK ================= -->
-  <h3 class="mb-4">Add Book</h3>
-
-  <form class="row g-3" action="/admin/products/add" method="POST">
-
+  <!-- Add Book Form -->
+  <form class="row g-3 mb-4" action="/admin/products/add" method="POST">
     <div class="col-md-4">
       <label class="form-label">ISBN</label>
       <input type="text" class="form-control" name="isbn" required>
     </div>
-
     <div class="col-md-8">
       <label class="form-label">Title</label>
       <input type="text" class="form-control" name="title" required>
     </div>
-
+    <div class="col-md-6">
+      <label class="form-label">Author</label>
+      <input type="text" class="form-control" name="author" required>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Publisher</label>
+      <input type="text" class="form-control" name="publisher" required>
+    </div>
     <div class="col-md-3">
       <label class="form-label">Stock</label>
       <input type="number" class="form-control" name="stock" required>
     </div>
-
     <div class="col-md-3">
       <label class="form-label">Threshold</label>
       <input type="number" class="form-control" name="threshold" required>
     </div>
-
     <div class="col-md-6">
       <label class="form-label">Category</label>
-      <select class="form-select" name="category">
-        <option>Science</option>
-        <option>Art</option>
-        <option>Religion</option>
-        <option>History</option>
-        <option>Geography</option>
-      </select>
+      <input type="text" class="form-control" name="category" required>
     </div>
-
     <div class="col-12">
-      <button type="submit" class="btn btn-success">Save Book</button>
+      <button type="submit" class="btn btn-success">Add Book</button>
     </div>
-
   </form>
 
-  <hr class="my-5">
+  <!-- Search Form -->
+  <form class="mb-4" action="/admin/products/search" method="GET">
+    <div class="input-group w-50">
+      <input type="text" class="form-control" name="query" placeholder="Search by ISBN, title, author, publisher, category">
+      <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+  </form>
 
-  <!-- ================= BOOK TABLE ================= -->
-  <h4 class="mb-3">Existing Books</h4>
-
+  <!-- Book Table -->
+  <h4>Existing Books</h4>
   <div class="table-responsive">
     <table class="table table-bordered table-hover align-middle">
       <thead class="table-light">
         <tr>
           <th>ISBN</th>
           <th>Title</th>
+          <th>Author</th>
+          <th>Publisher</th>
           <th>Stock</th>
-          <th>Status</th>
+          <th>Threshold</th>
+          <th>Category</th>
+          <th>Action</th>
         </tr>
       </thead>
-
       <tbody>
-        <% if (books.length === 0) { %>
-          <tr>
-            <td colspan="4" class="text-center text-muted">No books available</td>
-          </tr>
-        <% } %>
-
         <% books.forEach(book => { %>
-          <tr>
-            <td><%= book.isbn %></td>
-            <td><%= book.title %></td>
-            <td><%= book.stock %></td>
-            <td>
-              <span class="badge <%= book.stock < book.threshold ? 'bg-danger' : 'bg-success' %>">
-                <%= book.stock < book.threshold ? 'Below Threshold' : 'OK' %>
-              </span>
-            </td>
-          </tr>
+        <tr>
+          <td><%= book.isbn %></td>
+          <td><%= book.title %></td>
+          <td><%= book.author %></td>
+          <td><%= book.publisher %></td>
+          <td><%= book.stock %></td>
+          <td><%= book.threshold %></td>
+          <td><%= book.category %></td>
+          <td>
+            <form action="/admin/products/update" method="POST" class="d-flex gap-2">
+              <input type="hidden" name="isbn" value="<%= book.isbn %>">
+              <input type="number" class="form-control form-control-sm" name="stock" placeholder="Stock">
+              <button class="btn btn-sm btn-warning">Update</button>
+            </form>
+            <% if (orders.find(o => o.isbn === book.isbn && o.status === 'Pending')) { %>
+              <a href="/admin/orders/confirm/<%= book.isbn %>" class="btn btn-sm btn-success mt-1">Confirm Order</a>
+            <% } %>
+          </td>
+        </tr>
         <% }) %>
       </tbody>
     </table>
   </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
