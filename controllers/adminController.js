@@ -19,7 +19,22 @@ exports.products = (req, res) => {
 
 // Reports page
 exports.reports = (req, res) => {
-  res.render('admin/reports');
+  // Dummy data for now
+  const totalSalesMonth = 1000;
+  const topCustomers = [
+    { name: 'Alice', total: 300 },
+    { name: 'Bob', total: 200 }
+  ];
+  const topBooks = [
+    { isbn: '111', title: 'Physics', sold: 50 },
+    { isbn: '222', title: 'Art', sold: 30 }
+  ];
+
+  res.render('admin/reports', {
+    totalSalesMonth,
+    topCustomers,
+    topBooks
+  });
 };
 
 // Add book
