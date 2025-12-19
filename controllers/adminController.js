@@ -17,7 +17,9 @@ exports.dashboard = (req, res) => {
 
 // Products page
 exports.products = (req, res) => {
-  res.render('admin/product_management', { books, orders });
+  const error = req.session.error;  // get error from session
+  req.session.error = null;         // clear after use
+  res.render('admin/product_management', { books, orders, error });
 };
 
 // Add book
@@ -29,33 +31,31 @@ exports.addBook = (req, res) => {
 
 // Update book
 exports.updateBook = (req, res) => {
-  const { isbn, stock, title, author, publisher, category } = req.body;
+  const { isbn, stock } = req.body;
   const book = books.find(b => b.isbn === isbn);
 
-  if (!book) return res.send('Book not found');
-
-  if (stock && parseInt(stock) < 0) {
-    return res.send('Stock cannot be negative');
+  if (!book) {
+    req.session.error = 'Book not found';
+    return res.redirect('/admin/products');
   }
 
-  // Update fields if provided
-  if (title) book.title = title;
-  if (author) book.author = author;
-  if (publisher) book.publisher = publisher;
-  if (category) book.category = category;
-  if (stock !== undefined) book.stock = parseInt(stock);
+  if (parseInt(stock) < 0) {
+    req.session.error = 'Update rejected: Stock cannot be negative';
+    return res.redirect('/admin/products');
+  }
 
-  // Place order if stock falls below threshold
+  book.stock = parseInt(stock);
+
+  // Place order if stock < threshold
   if (book.stock < book.threshold) {
     const existingOrder = orders.find(o => o.isbn === isbn && o.status === 'Pending');
     if (!existingOrder) {
-      orders.push({ isbn: book.isbn, quantity: 10, status: 'Pending' }); // constant order quantity = 10
+      orders.push({ isbn: book.isbn, quantity: 10, status: 'Pending' });
     }
   }
 
   res.redirect('/admin/products');
 };
-
 // Confirm order
 exports.confirmOrder = (req, res) => {
   const { isbn } = req.params;
@@ -82,28 +82,49 @@ exports.searchBooks = (req, res) => {
 };
 
 // Reports page
+// Reports page
 exports.reports = (req, res) => {
-  // Dummy data for reports
-  const totalSalesMonth = 1000; // total sales last month
-  const totalSalesDate = 200;   // total sales on a specific day
+  const { date, isbn } = req.query;
+
+  // -------------------------
+  // Dummy sales data (simulation)
+  // -------------------------
+  const totalSalesMonth = 1000; // Previous month sales (required)
+  
+  // Sales on a specific day (requirement)
+  const totalSalesDate = date ? 250 : null;
+
+  // Top 5 customers (last 3 months)
   const topCustomers = [
     { name: 'Alice', total: 300 },
-    { name: 'Bob', total: 200 }
+    { name: 'Bob', total: 200 },
+    { name: 'Charlie', total: 180 },
+    { name: 'Dina', total: 150 },
+    { name: 'Omar', total: 120 }
   ];
+
+  // Top 10 selling books (last 3 months)
   const topBooks = [
     { isbn: '111', title: 'Physics', sold: 50 },
-    { isbn: '222', title: 'Art', sold: 30 }
+    { isbn: '222', title: 'Art', sold: 30 },
+    { isbn: '333', title: 'History', sold: 25 }
   ];
-  const bookOrdersCount = orders.reduce((acc, o) => {
-    acc[o.isbn] = (acc[o.isbn] || 0) + 1;
-    return acc;
-  }, {});
+
+  // -------------------------
+  // Number of times a book was ordered (replenishment orders)
+  // -------------------------
+  let bookOrdersCount = null;
+  if (isbn) {
+    bookOrdersCount = orders.filter(o => o.isbn === isbn).length;
+  }
 
   res.render('admin/reports', {
     totalSalesMonth,
     totalSalesDate,
     topCustomers,
     topBooks,
-    bookOrdersCount
+    bookOrdersCount,
+    selectedDate: date || '',
+    searchedISBN: isbn || ''
   });
 };
