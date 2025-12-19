@@ -78,7 +78,7 @@ exports.searchBooks = (req, res) => {
     b.publisher.toLowerCase().includes(query.toLowerCase()) ||
     b.category.toLowerCase().includes(query.toLowerCase())
   );
-  res.render('admin/product_management', { books: filtered, orders });
+  res.render('admin/product_management', { books: filtered, orders, error: null });
 };
 
 // Reports page
