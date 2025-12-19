@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order History</title>
+</head>
+<body>
+    <h1>Your Orders</h1>
+    <a href="/customer/product_list">Back to Books</a> | 
+    <a href="/customer/profile">Profile</a> | 
+    <a href="/logout">Logout</a>
+
+    <% if(orders.length === 0) { %>
+        <p>You have no past orders.</p>
+    <% } else { %>
+        <ul>
+            <% orders.forEach(order => { %>
+                <li>
+                    <strong>Order #<%= order.id %></strong> - Date: <%= order.date %> - Total: $<%= order.total %>
+                    <a href="/customer/orders/<%= order.id %>">View Details</a>
+                </li>
+            <% }) %>
+        </ul>
+    <% } %>
+</body>
+</html>

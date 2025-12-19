@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Books List</title>
+</head>
+<body>
+    <h1>Available Books</h1>
+    <a href="/customer/cart">View Cart</a> | 
+    <a href="/customer/profile">Profile</a> | 
+    <a href="/logout">Logout</a>
+
+    <ul>
+        <% books.forEach(book => { %>
+            <li>
+                <strong><%= book.title %></strong> - $<%= book.price %> - Stock: <%= book.stock %>
+                <form method="POST" action="/customer/cart/add/<%= book.isbn %>">
+                    <button type="submit" <% if(book.stock === 0) { %> disabled <% } %>>Add to Cart</button>
+                </form>
+            </li>
+        <% }) %>
+    </ul>
+</body>
+</html>

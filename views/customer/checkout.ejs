@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Checkout</title>
+</head>
+<body>
+    <h1>Checkout</h1>
+    <a href="/customer/cart">Back to Cart</a> | 
+    <a href="/customer/profile">Profile</a> | 
+    <a href="/logout">Logout</a>
+
+    <% if(error) { %>
+        <p style="color:red;"><%= error %></p>
+    <% } %>
+
+    <form method="POST" action="/customer/checkout">
+        Credit Card Number: <input type="text" name="cardNumber" placeholder="16-digit number" required /><br/>
+        Expiry Date: <input type="month" name="expiry" required /><br/>
+        <button type="submit">Pay & Checkout</button>
+    </form>
+</body>
+</html>
