@@ -23,5 +23,17 @@
     "chai": "^6.2.1",
     "mocha": "^11.7.5",
     "nodemon": "^3.1.11"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nourzeidan/bookstore_order_system.git"
+  },
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Nourzeidan/bookstore_order_system/issues"
+  },
+  "homepage": "https://github.com/Nourzeidan/bookstore_order_system#readme"
 }

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Profile</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Welcome, <%= user.username %>!</h1>
+        <nav>
+            <a href="/customer/product_list">Products</a> |
+            <a href="/customer/cart">Cart</a> |
+            <a href="/customer/orders">Orders</a> |
+            <a href="/logout">Logout</a>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Your Profile</h2>
+        <form action="/customer/profile" method="POST">
+            <div>
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" value="<%= user.username %>" required>
+            </div>
+
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="<%= user.email || '' %>">
+            </div>
+
+            <div>
+                <label for="password">New Password:</label>
+                <input type="password" id="password" name="password" placeholder="Leave blank if unchanged">
+            </div>
+
+            <button type="submit">Update Profile</button>
+        </form>
+    </main>
+</body>
+</html>
