@@ -18,9 +18,9 @@ INSERT INTO AUTHOR (Author_Name) VALUES
 ('Ibn Khaldun');
 
 INSERT INTO BOOK VALUES
-('ISBN1', 2020, 150.00, 'Science', 10, 5, 1),
-('ISBN2', 2018, 120.00, 'Art', 8, 4, 2),
-('ISBN3', 2019, 90.00, 'History', 3, 5, 1);
+('ISBN1', 'Principia Mathematica', 2020, 150.00, 'Science', 10, 5, 1),
+('ISBN2', 'The Vitruvian Man', 2018, 120.00, 'Art', 8, 4, 2),
+('ISBN3', 'The Muqaddimah', 2019, 90.00, 'History', 3, 5, 1);
 
 INSERT INTO BOOK_AUTHOR VALUES
 ('ISBN1', 1),

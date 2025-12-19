@@ -28,6 +28,7 @@ CREATE TABLE AUTHOR (
 
 CREATE TABLE BOOK (
     ISBN VARCHAR(20) PRIMARY KEY,
+    Title VARCHAR(255) NOT NULL,
     Publication_Year INT,
     Selling_Price DECIMAL(10,2),
     Category VARCHAR(20),
@@ -122,3 +123,28 @@ CREATE TABLE REPLENISHMENT_ORDER (
     FOREIGN KEY (Publisher_ID)
         REFERENCES PUBLISHER(Publisher_ID)
 );
+
+DELIMITER //
+CREATE TRIGGER before_book_update
+BEFORE UPDATE ON BOOK -- a trigger to prevent negative inventory
+FOR EACH ROW
+BEGIN
+    IF NEW.Quantity_In_Stock < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: Inventory cannot be negative.';
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER after_book_update
+AFTER UPDATE ON BOOK
+FOR EACH ROW
+BEGIN
+    -- If stock drops below the threshold, place a replenishment order
+    IF OLD.Quantity_In_Stock >= NEW.Threshold AND NEW.Quantity_In_Stock < NEW.Threshold THEN
+        INSERT INTO REPLENISHMENT_ORDER (ISBN, Publisher_ID, Quantity, Order_Date, Status)
+        VALUES (NEW.ISBN, NEW.Publisher_ID, 20, CURDATE(), 'Pending');
+    END IF;
+END //
+DELIMITER ;
