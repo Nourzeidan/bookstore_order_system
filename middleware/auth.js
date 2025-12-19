@@ -12,7 +12,7 @@ exports.isCustomer = (req, res, next) => {
     // If not a customer, redirect to login
     res.redirect('/login');
 };
-
+// module.exports = { isAdmin, isCustomer };
 exports.isAuthenticated = (req, res, next) => {
     if (req.session.userId) {
         return next();

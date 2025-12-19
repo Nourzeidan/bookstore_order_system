@@ -23,13 +23,16 @@ app.set('views', path.join(__dirname, 'views'));
 // Routes
 const { router: authRoutes } = require('./routes/auth');
 const customerRoutes = require('./routes/customer');
+const adminRoutes = require('./routes/admin');
+const { isAdmin, isCustomer } = require('./middleware/auth');
 
 app.use('/', authRoutes);
-app.use('/customer', customerRoutes);
+app.use('/customer', isCustomer,customerRoutes);
+app.use('/admin', isAdmin, adminRoutes);
 
 // Redirect root
 app.get('/', (req, res) => {
-    res.redirect('/customer/product_list');
+    res.render('index');
 });
 
 // Start server
