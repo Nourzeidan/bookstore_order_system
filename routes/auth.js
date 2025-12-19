@@ -53,7 +53,7 @@ router.post('/login', async (req, res) => {
 
         if (!user) {
             console.log("Debug: User not found in array");
-            return res.send("Invalid username. <a href='/login'>Try again</a>");
+            return res.render('login', { error: 'Invalid username or password' });
         }
 
         console.log("Debug: User found, checking password...");
@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
             }
         } else {
             console.log("Debug: Password DOES NOT match");
-            res.send("Invalid password. <a href='/login'>Try again</a>");
+            return res.render('login', { error: 'Invalid username or password' });
         }
     } catch (error) {
         console.error("Login Error:", error);
