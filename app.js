@@ -34,8 +34,10 @@ app.use('/customer', isCustomer, customerRoutes)
 app.use('/', authRoutes);
 
 // Redirect root
-app.get('/', (req, res) => res.redirect('/admin/dashboard'));
-
+// app.get('/', (req, res) => res.redirect('/admin/dashboard'));
+app.get('/', (req, res) => {
+    res.render('index'); // admin and customer choose login
+});
 // Start server
 app.listen(3000, () => console.log('Server running at http://localhost:3000'));
 
