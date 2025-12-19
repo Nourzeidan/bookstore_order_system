@@ -21,12 +21,18 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Routes
-const { router: authRoutes } = require('./routes/auth');
+const authSystem = require('./routes/auth');
 const customerRoutes = require('./routes/customer');
 const adminRoutes = require('./routes/admin');
 const { isAdmin, isCustomer } = require('./middleware/auth');
-
-app.use('/', authRoutes);
+console.log('--- LINE-BY-LINE CHECK ---');
+console.log('isAdmin:', typeof isAdmin);
+console.log('adminRoutes:', typeof adminRoutes);
+console.log('isCustomer:', typeof isCustomer);
+console.log('customerRoutes:', typeof customerRoutes);
+console.log('authSystem:', typeof authSystem);
+console.log('--------------------------');
+app.use('/', authSystem);
 app.use('/customer', isCustomer,customerRoutes);
 app.use('/admin', isAdmin, adminRoutes);
 

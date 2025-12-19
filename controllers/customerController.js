@@ -59,7 +59,7 @@ exports.removeFromCart = (req, res) => {
 exports.getCheckout = (req, res) => res.render('customer/checkout', { error: null });
 exports.postCheckout = (req, res) => {
     req.session.cart = [];
-    res.redirect('/customer/orders');
+    res.redirect('/customer/order_history');
 };
 
 // Orders
@@ -68,7 +68,7 @@ exports.viewOrders = (req, res) => {
         { id: 1, date: '2025-12-01', total: 380 },
         { id: 2, date: '2025-12-10', total: 150 }
     ];
-    res.render('customer/orders', { orders });
+    res.render('customer/order_history', { orders });
 };
 exports.viewOrderDetails = (req, res) => {
     const order = {

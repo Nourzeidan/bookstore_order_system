@@ -1,22 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-    <h1>Checkout</h1>
-    <a href="/customer/cart">Back to Cart</a> | 
-    <a href="/customer/profile">Profile</a> | 
-    <a href="/logout">Logout</a>
+<body class="bg-light">
 
-    <% if(error) { %>
-        <p style="color:red;"><%= error %></p>
-    <% } %>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">📚 BookStore</a>
+            <div class="ms-auto">
+                <a href="/customer/cart" class="btn btn-outline-light btn-sm me-2">Back to Cart</a>
+                <a href="/customer/profile" class="btn btn-outline-light btn-sm me-2">Profile</a>
+                <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
 
-    <form method="POST" action="/customer/checkout">
-        Credit Card Number: <input type="text" name="cardNumber" placeholder="16-digit number" required /><br/>
-        Expiry Date: <input type="month" name="expiry" required /><br/>
-        <button type="submit">Pay & Checkout</button>
-    </form>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                
+                <h1 class="h3 mb-4 text-center">Secure Checkout</h1>
+
+                <% if(error) { %>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Transaction Failed:</strong> <%= error %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="card-title mb-0">Payment Details</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form method="POST" action="/customer/checkout">
+                            
+                            <div class="mb-3">
+                                <label for="cardNumber" class="form-label">Credit Card Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">💳</span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="cardNumber" 
+                                           name="cardNumber" 
+                                           placeholder="1234 5678 1234 5678" 
+                                           pattern="\d{16}" 
+                                           title="Please enter a 16-digit card number"
+                                           required>
+                                </div>
+                                <div class="form-text">We'll never share your card details.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="expiry" class="form-label">Expiry Date</label>
+                                <input type="month" class="form-control" id="expiry" name="expiry" required>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    Pay & Complete Order
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer bg-light text-center py-2">
+                        <small class="text-muted"> Encrypted Secure Payment</small>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="/customer/product_list" class="text-decoration-none small text-secondary">Continue Shopping</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
