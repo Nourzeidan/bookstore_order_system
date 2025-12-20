@@ -221,25 +221,27 @@ exports.reports = async (req, res) => {
     `);
 
     // Book Orders Count
-    let bookOrdersCount = null;
-    if (isbn) {
-      const [countResult] = await pool.query(`
-        SELECT COUNT(*) AS cnt
-        FROM REPLENISHMENT_ORDER
-        WHERE ISBN=?
-      `, [isbn]);
-      bookOrdersCount = countResult[0].cnt;
-    }
+    let bookOrdersCount = 0;
+if (isbn) {
+  const [countResult] = await pool.query(`
+    SELECT IFNULL(SUM(oi.Quantity), 0) AS cnt
+    FROM ORDER_ITEM oi
+    JOIN ORDERS o ON oi.Order_ID = o.Order_ID
+    WHERE oi.ISBN = ? AND o.Status = 'Completed'
+  `, [isbn]);
 
-    res.render('admin/reports', {
-      totalSalesMonth: totalSalesMonthResult[0].totalSalesMonth,
-      totalSalesDate,
-      topCustomers,
-      topBooks,
-      bookOrdersCount,
-      selectedDate: date || '',
-      searchedISBN: isbn || ''
-    });
+  bookOrdersCount = parseInt(countResult[0].cnt, 10) || 0;
+}
+
+res.render('admin/reports', {
+  totalSalesMonth: totalSalesMonthResult[0].totalSalesMonth,
+  totalSalesDate,
+  topCustomers,
+  topBooks,
+  bookOrdersCount,
+  selectedDate: date || '',
+  searchedISBN: isbn || ''
+});
 
   } catch (err) {
     console.error(err);
