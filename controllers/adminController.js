@@ -1,132 +1,220 @@
-// Dummy data
-let books = [
-  { isbn: '111', title: 'Physics', author: 'John', publisher: 'Uni Press', stock: 5, threshold: 3, category: 'Science' },
-  { isbn: '222', title: 'Art', author: 'Alice', publisher: 'Art House', stock: 2, threshold: 5, category: 'Art' }
-];
+const pool = require('../config/database');// MySQL pool
 
-let orders = []; // Pending orders
+// ================== DASHBOARD ==================
+exports.dashboard = async (req, res) => {
+  try {
+    const [booksResult] = await pool.query('SELECT COUNT(*) AS totalBooks FROM BOOK');
+    const [salesResult] = await pool.query(`
+      SELECT IFNULL(SUM(oi.Quantity * oi.Price),0) AS totalSales
+      FROM ORDERS o
+      JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
+    `);
+    const [pendingOrdersResult] = await pool.query(`
+      SELECT COUNT(*) AS pendingOrders 
+      FROM REPLENISHMENT_ORDER 
+      WHERE Status='Pending'
+    `);
 
-// Dashboard
-exports.dashboard = (req, res) => {
-  res.render('admin/dashboard', {
-    totalBooks: books.length,
-    totalSales: 1500,
-    pendingOrders: orders.filter(o => o.status === 'Pending').length
-  });
-};
-
-// Products page
-exports.products = (req, res) => {
-  const error = req.session.error;  // get error from session
-  req.session.error = null;         // clear after use
-  res.render('admin/product_management', { books, orders, error });
-};
-
-// Add book
-exports.addBook = (req, res) => {
-  const { isbn, title, author, publisher, stock, threshold, category } = req.body;
-  books.push({ isbn, title, author, publisher, stock: parseInt(stock), threshold: parseInt(threshold), category });
-  res.redirect('/admin/products');
-};
-
-// Update book
-exports.updateBook = (req, res) => {
-  const { isbn, stock } = req.body;
-  const book = books.find(b => b.isbn === isbn);
-
-  if (!book) {
-    req.session.error = 'Book not found';
-    return res.redirect('/admin/products');
+    res.render('admin/dashboard', {
+      totalBooks: booksResult[0].totalBooks,
+      totalSales: salesResult[0].totalSales,
+      pendingOrders: pendingOrdersResult[0].pendingOrders
+    });
+  } catch (err) {
+    console.error(err);
+    res.send('Database error');
   }
+};
 
-  if (parseInt(stock) < 0) {
-    req.session.error = 'Update rejected: Stock cannot be negative';
-    return res.redirect('/admin/products');
+// ================== PRODUCTS ==================
+exports.products = async (req, res) => {
+  try {
+    const error = req.session.error;
+    req.session.error = null;
+
+    const [books] = await pool.query(`
+  SELECT 
+    b.ISBN,
+    b.Title,
+    b.Quantity_In_Stock AS stock,
+    b.Threshold,
+    b.Selling_Price AS selling_price,
+    b.Category
+  FROM BOOK b
+`);
+
+    const [orders] = await pool.query(`
+      SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
+    `);
+
+    res.render('admin/product_management', { books, orders, error });
+  } catch (err) {
+    console.error(err);
+    res.send('Database error');
   }
+};
 
-  book.stock = parseInt(stock);
+// ================== ADD BOOK ==================
+exports.addBook = async (req, res) => {
+  try {
+    const { isbn, title, stock, threshold, category, selling_price } = req.body;
+    await pool.query(`
+      INSERT INTO BOOK (ISBN, Title, Quantity_In_Stock, Threshold, Category, Selling_Price, Publisher_ID)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price)]);
+    res.redirect('/admin/products');
+  } catch (err) {
+    console.error(err);
+    req.session.error = 'Error adding book';
+    res.redirect('/admin/products');
+  }
+};
 
-  // Place order if stock < threshold
-  if (book.stock < book.threshold) {
-    const existingOrder = orders.find(o => o.isbn === isbn && o.status === 'Pending');
-    if (!existingOrder) {
-      orders.push({ isbn: book.isbn, quantity: 10, status: 'Pending' });
+// ================== UPDATE BOOK ==================
+exports.updateBook = async (req, res) => {
+  try {
+    const { isbn, stock } = req.body;
+    const [book] = await pool.query('SELECT * FROM BOOK WHERE ISBN=?', [isbn]);
+
+    if (!book.length) {
+      req.session.error = 'Book not found';
+      return res.redirect('/admin/products');
     }
+
+    if (parseInt(stock) < 0) {
+      req.session.error = 'Stock cannot be negative';
+      return res.redirect('/admin/products');
+    }
+
+    await pool.query('UPDATE BOOK SET Quantity_In_Stock=? WHERE ISBN=?', [parseInt(stock), isbn]);
+
+    // Auto-order handled by DB trigger
+
+    res.redirect('/admin/products');
+  } catch (err) {
+    console.error(err);
+    req.session.error = 'Error updating book';
+    res.redirect('/admin/products');
   }
-
-  res.redirect('/admin/products');
 };
-// Confirm order
-exports.confirmOrder = (req, res) => {
-  const { isbn } = req.params;
-  const order = orders.find(o => o.isbn === isbn && o.status === 'Pending');
-  if (order) {
-    const book = books.find(b => b.isbn === isbn);
-    if (book) book.stock += order.quantity;
-    order.status = 'Confirmed';
+
+// ================== CONFIRM ORDER ==================
+exports.confirmOrder = async (req, res) => {
+  try {
+    const { isbn } = req.params;
+    const [order] = await pool.query(`
+      SELECT * FROM REPLENISHMENT_ORDER 
+      WHERE ISBN=? AND Status='Pending'
+    `, [isbn]);
+
+    if (order.length) {
+      await pool.query(`
+        UPDATE BOOK b
+        JOIN REPLENISHMENT_ORDER r ON b.ISBN = r.ISBN
+        SET b.Quantity_In_Stock = b.Quantity_In_Stock + r.Quantity,
+            r.Status='Confirmed'
+        WHERE r.Order_ID=?;
+      `, [order[0].Order_ID]);
+    }
+    res.redirect('/admin/products');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/products');
   }
-  res.redirect('/admin/products');
 };
 
-// Search books
-exports.searchBooks = (req, res) => {
-  const { query } = req.query;
-  const filtered = books.filter(b =>
-    b.isbn.includes(query) ||
-    b.title.toLowerCase().includes(query.toLowerCase()) ||
-    b.author.toLowerCase().includes(query.toLowerCase()) ||
-    b.publisher.toLowerCase().includes(query.toLowerCase()) ||
-    b.category.toLowerCase().includes(query.toLowerCase())
-  );
-  res.render('admin/product_management', { books: filtered, orders, error: null });
-};
+// ================== SEARCH BOOKS ==================
+exports.searchBooks = async (req, res) => {
+  try {
+    const { query } = req.query;
+    const [books] = await pool.query(`
+      SELECT * FROM BOOK
+      WHERE ISBN LIKE ? OR Title LIKE ? OR Category LIKE ?
+    `, [`%${query}%`, `%${query}%`, `%${query}%`]);
 
-// Reports page
-// Reports page
-exports.reports = (req, res) => {
-  const { date, isbn } = req.query;
+    const [orders] = await pool.query(`
+      SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
+    `);
 
-  // -------------------------
-  // Dummy sales data (simulation)
-  // -------------------------
-  const totalSalesMonth = 1000; // Previous month sales (required)
-  
-  // Sales on a specific day (requirement)
-  const totalSalesDate = date ? 250 : null;
-
-  // Top 5 customers (last 3 months)
-  const topCustomers = [
-    { name: 'Alice', total: 300 },
-    { name: 'Bob', total: 200 },
-    { name: 'Charlie', total: 180 },
-    { name: 'Dina', total: 150 },
-    { name: 'Omar', total: 120 }
-  ];
-
-  // Top 10 selling books (last 3 months)
-  const topBooks = [
-    { isbn: '111', title: 'Physics', sold: 50 },
-    { isbn: '222', title: 'Art', sold: 30 },
-    { isbn: '333', title: 'History', sold: 25 }
-  ];
-
-  // -------------------------
-  // Number of times a book was ordered (replenishment orders)
-  // -------------------------
-  let bookOrdersCount = null;
-  if (isbn) {
-    bookOrdersCount = orders.filter(o => o.isbn === isbn).length;
+    res.render('admin/product_management', { books, orders, error: null });
+  } catch (err) {
+    console.error(err);
+    res.send('Database error');
   }
-
-  res.render('admin/reports', {
-    totalSalesMonth,
-    totalSalesDate,
-    topCustomers,
-    topBooks,
-    bookOrdersCount,
-    selectedDate: date || '',
-    searchedISBN: isbn || ''
-  });
 };
 
+// ================== REPORTS ==================
+exports.reports = async (req, res) => {
+  try {
+    const { date, isbn } = req.query;
 
+    // Total Sales Month
+    const [totalSalesMonthResult] = await pool.query(`
+      SELECT IFNULL(SUM(oi.Quantity*oi.Price),0) AS totalSalesMonth
+      FROM ORDERS o
+      JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
+      WHERE MONTH(o.Order_Date) = MONTH(CURDATE()) - 1
+    `);
+
+    // Total Sales Date
+    let totalSalesDate = null;
+    if (date) {
+      const [dateSalesResult] = await pool.query(`
+        SELECT IFNULL(SUM(oi.Quantity*oi.Price),0) AS totalSalesDate
+        FROM ORDERS o
+        JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
+        WHERE o.Order_Date=?
+      `, [date]);
+      totalSalesDate = dateSalesResult[0].totalSalesDate;
+    }
+
+    // Top 5 Customers
+    const [topCustomers] = await pool.query(`
+      SELECT c.First_Name AS name, SUM(oi.Quantity*oi.Price) AS total
+      FROM ORDERS o
+      JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
+      JOIN CUSTOMER c ON o.Customer_Username = c.Username
+      WHERE o.Order_Date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+      GROUP BY c.Username
+      ORDER BY total DESC
+      LIMIT 5
+    `);
+
+    // Top 10 Books
+    const [topBooks] = await pool.query(`
+      SELECT b.ISBN, b.Title, SUM(oi.Quantity) AS sold
+      FROM ORDER_ITEM oi
+      JOIN BOOK b ON oi.ISBN = b.ISBN
+      JOIN ORDERS o ON oi.Order_ID = o.Order_ID
+      WHERE o.Order_Date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+      GROUP BY b.ISBN
+      ORDER BY sold DESC
+      LIMIT 10
+    `);
+
+    // Book Orders Count
+    let bookOrdersCount = null;
+    if (isbn) {
+      const [countResult] = await pool.query(`
+        SELECT COUNT(*) AS cnt
+        FROM REPLENISHMENT_ORDER
+        WHERE ISBN=?
+      `, [isbn]);
+      bookOrdersCount = countResult[0].cnt;
+    }
+
+    res.render('admin/reports', {
+      totalSalesMonth: totalSalesMonthResult[0].totalSalesMonth,
+      totalSalesDate,
+      topCustomers,
+      topBooks,
+      bookOrdersCount,
+      selectedDate: date || '',
+      searchedISBN: isbn || ''
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.send('Database error');
+  }
+};
