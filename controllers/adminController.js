@@ -33,21 +33,27 @@ exports.products = async (req, res) => {
     req.session.error = null;
 
     const [books] = await pool.query(`
-  SELECT 
-    b.ISBN,
-    b.Title,
-    b.Quantity_In_Stock AS stock,
-    b.Threshold,
-    b.Selling_Price AS selling_price,
-    b.Category
-  FROM BOOK b
-`);
+      SELECT 
+        b.ISBN, b.Title, b.Quantity_In_Stock AS stock, b.Threshold, b.Selling_Price AS selling_price,
+        b.Category,
+        p.Name AS Publisher_Name,
+        GROUP_CONCAT(a.Author_Name SEPARATOR ', ') AS authors
+      FROM BOOK b
+      JOIN PUBLISHER p ON b.Publisher_ID = p.Publisher_ID
+      LEFT JOIN BOOK_AUTHOR ba ON b.ISBN = ba.ISBN
+      LEFT JOIN AUTHOR a ON ba.Author_ID = a.Author_ID
+      GROUP BY b.ISBN
+    `);
 
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
     `);
 
-    res.render('admin/product_management', { books, orders, error });
+    // Fetch authors and publishers
+    const [authors] = await pool.query(`SELECT Author_ID, Author_Name FROM AUTHOR`);
+    const [publishers] = await pool.query(`SELECT Publisher_ID, Name FROM PUBLISHER`);
+
+    res.render('admin/product_management', { books, orders, error, authors, publishers });
   } catch (err) {
     console.error(err);
     res.send('Database error');
@@ -57,21 +63,25 @@ exports.products = async (req, res) => {
 // Add Book
 exports.addBook = async (req, res) => {
   try {
-    const { isbn, title, stock, threshold, category, selling_price } = req.body;
+    const { isbn, title, stock, threshold, category, selling_price, author_id, publisher_id } = req.body;
 
     await pool.query(`
       INSERT INTO BOOK 
       (ISBN, Title, Publication_Year, Quantity_In_Stock, Threshold, Category, Selling_Price, Publisher_ID)
-      VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, 1)
-    `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price)]);
+      VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, ?)
+    `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price), publisher_id]);
 
-    // Step 2: Check stock vs threshold
+    await pool.query(`
+      INSERT INTO BOOK_AUTHOR (ISBN, Author_ID)
+      VALUES (?, ?)
+    `, [isbn, author_id]);
+
     if (parseInt(stock) < parseInt(threshold)) {
       await pool.query(`
         INSERT INTO REPLENISHMENT_ORDER 
         (ISBN, Publisher_ID, Quantity, Order_Date, Status)
-        VALUES (?, 1, 20, CURDATE(), 'Pending')
-      `, [isbn]);
+        VALUES (?, ?, 20, CURDATE(), 'Pending')
+      `, [isbn, publisher_id]);
     }
 
     res.redirect('/admin/products');
@@ -95,7 +105,6 @@ exports.updateBook = async (req, res) => {
 
     await pool.query('UPDATE BOOK SET Quantity_In_Stock=? WHERE ISBN=?', [parseInt(stock), isbn]);
 
-    // Check threshold and insert pending order if needed
     if (parseInt(stock) < book[0].Threshold) {
       const [existingOrder] = await pool.query(`
         SELECT 1 FROM REPLENISHMENT_ORDER 
@@ -148,23 +157,30 @@ exports.confirmOrder = async (req, res) => {
 exports.searchBooks = async (req, res) => {
   try {
     const { query } = req.query;
+
     const [books] = await pool.query(`
-  SELECT
-    ISBN,
-    Title,
-    Quantity_In_Stock AS stock,
-    Threshold,
-    Selling_Price AS selling_price,
-    Category
-  FROM BOOK
-  WHERE ISBN LIKE ? OR Title LIKE ? OR Category LIKE ?
-`, [`%${query}%`, `%${query}%`, `%${query}%`]);
+      SELECT 
+        b.ISBN, 
+        b.Title, 
+        b.Quantity_In_Stock AS stock, 
+        b.Threshold, 
+        b.Selling_Price AS selling_price,
+        b.Category,
+        p.Name AS Publisher_Name,
+        GROUP_CONCAT(a.Author_Name SEPARATOR ', ') AS authors
+      FROM BOOK b
+      JOIN PUBLISHER p ON b.Publisher_ID = p.Publisher_ID
+      LEFT JOIN BOOK_AUTHOR ba ON b.ISBN = ba.ISBN
+      LEFT JOIN AUTHOR a ON ba.Author_ID = a.Author_ID
+      WHERE b.ISBN LIKE ? OR b.Title LIKE ? OR b.Category LIKE ?
+      GROUP BY b.ISBN
+    `, [`%${query}%`, `%${query}%`, `%${query}%`]);
 
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
     `);
 
-    res.render('admin/product_management', { books, orders, error: null });
+    res.render('admin/product_management', { books, orders, error: null, authors: [], publishers: [] });
   } catch (err) {
     console.error(err);
     res.send('Database error');
@@ -176,29 +192,33 @@ exports.reports = async (req, res) => {
   try {
     const { date, isbn } = req.query;
 
-    // Total Sales Month
+    // 1️⃣ Total Sales Last Month
     const [totalSalesMonthResult] = await pool.query(`
-      SELECT IFNULL(SUM(oi.Quantity*oi.Price),0) AS totalSalesMonth
+      SELECT IFNULL(SUM(oi.Quantity * oi.Price), 0) AS totalSalesMonth
       FROM ORDERS o
       JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
       WHERE MONTH(o.Order_Date) = MONTH(CURDATE()) - 1
+        AND YEAR(o.Order_Date) = YEAR(CURDATE())
     `);
 
-    // Total Sales Date
+    // 2️⃣ Total Sales for Selected Date
     let totalSalesDate = null;
     if (date) {
       const [dateSalesResult] = await pool.query(`
-        SELECT IFNULL(SUM(oi.Quantity*oi.Price),0) AS totalSalesDate
+        SELECT IFNULL(SUM(oi.Quantity * oi.Price), 0) AS totalSalesDate
         FROM ORDERS o
         JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
-        WHERE o.Order_Date=?
+        WHERE o.Order_Date = ?
       `, [date]);
+
       totalSalesDate = dateSalesResult[0].totalSalesDate;
     }
 
-    // Top 5 Customers
+    // 3️⃣ Top 5 Customers (last 3 months)
     const [topCustomers] = await pool.query(`
-      SELECT c.First_Name AS name, SUM(oi.Quantity*oi.Price) AS total
+      SELECT 
+        c.First_Name AS name,
+        SUM(oi.Quantity * oi.Price) AS total
       FROM ORDERS o
       JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
       JOIN CUSTOMER c ON o.Customer_Username = c.Username
@@ -208,9 +228,12 @@ exports.reports = async (req, res) => {
       LIMIT 5
     `);
 
-    // Top 10 Books
+    // 4️⃣ Top 10 Books (last 3 months)
     const [topBooks] = await pool.query(`
-      SELECT b.ISBN, b.Title, SUM(oi.Quantity) AS sold
+      SELECT 
+        b.ISBN,
+        b.Title,
+        SUM(oi.Quantity) AS sold
       FROM ORDER_ITEM oi
       JOIN BOOK b ON oi.ISBN = b.ISBN
       JOIN ORDERS o ON oi.Order_ID = o.Order_ID
@@ -220,31 +243,31 @@ exports.reports = async (req, res) => {
       LIMIT 10
     `);
 
-    // Book Orders Count
-    let bookOrdersCount = 0;
-if (isbn) {
-  const [countResult] = await pool.query(`
-    SELECT IFNULL(SUM(oi.Quantity), 0) AS cnt
-    FROM ORDER_ITEM oi
-    JOIN ORDERS o ON oi.Order_ID = o.Order_ID
-    WHERE oi.ISBN = ? AND o.Status = 'Completed'
-  `, [isbn]);
+    // 5️⃣ Number of Replenishment Orders for a Book
+    let bookOrdersCount = null;
+    if (isbn) {
+      const [countResult] = await pool.query(`
+        SELECT COUNT(*) AS cnt
+        FROM REPLENISHMENT_ORDER
+        WHERE ISBN = ?
+      `, [isbn]);
 
-  bookOrdersCount = parseInt(countResult[0].cnt, 10) || 0;
-}
+      bookOrdersCount = countResult[0].cnt;
+    }
 
-res.render('admin/reports', {
-  totalSalesMonth: totalSalesMonthResult[0].totalSalesMonth,
-  totalSalesDate,
-  topCustomers,
-  topBooks,
-  bookOrdersCount,
-  selectedDate: date || '',
-  searchedISBN: isbn || ''
-});
+    res.render('admin/reports', {
+      totalSalesMonth: totalSalesMonthResult[0].totalSalesMonth,
+      totalSalesDate,
+      topCustomers,
+      topBooks,
+      bookOrdersCount,
+      selectedDate: date || '',
+      searchedISBN: isbn || ''
+    });
 
   } catch (err) {
     console.error(err);
     res.send('Database error');
   }
 };
+
