@@ -4,16 +4,6 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const db = require('../config/database');
 
-// // Dummy users
-// let usersTable = [
-//     {
-//         id: 1,
-//         username: 'admin',
-//         password_hash: '$2a$12$/JRIiz9xNCHaz.91GO2W5OEkjLVMLziVvnbdaYqtZFwOqyveHoBtG',
-//         user_role: 'Admin'
-//     }
-// ];
-
 // Views
 router.get('/login', (req, res) => res.render('login', { error: null }));
 router.get('/signup', (req, res) => res.render('signup', { error: null }));

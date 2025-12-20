@@ -19,5 +19,4 @@ const isAuthenticated = (req, res, next) => {
     res.redirect('/login');
 };
 
-// EXPORT ALL THREE PROPERLY
 module.exports = { isAdmin, isCustomer, isAuthenticated };

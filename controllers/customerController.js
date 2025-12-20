@@ -58,7 +58,6 @@ exports.addToCart = async (req, res) => {
         if (!cart) return res.status(400).send("Cart not found");
         const cartId = cart.Cart_ID;
 
-        // 1. Check if item exists
         const [[existingItem]] = await db.execute(
             'SELECT Quantity FROM CART_ITEM WHERE Cart_ID = ? AND ISBN = ?',
             [cartId, isbn]

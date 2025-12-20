@@ -34,9 +34,6 @@ const router = express.Router();
 const customerController = require('../controllers/customerController');
 const { isCustomer } = require('../middleware/auth');
 
-// --- 1. REMOVE OR COMMENT OUT THESE IF THEY CAUSE CRASHES ---
-// router.get('/login', customerController.getLogin); // Only use if getLogin exists in controller
-// router.post('/login', customerController.postLogin);
 
 router.get('/logout', customerController.logout);
 

@@ -28,7 +28,6 @@ const db = require('../config/database');
 //         const cartItem = req.session.cart.find(item => item.isbn === isbn);
 
 //         if (cartItem) {
-//             // Prevent adding more than what's physically in the database
 //             if (cartItem.quantity + 1 > book.Quantity_In_Stock) {
 //                 return res.status(400).send('Cannot exceed physical stock');
 //             }
