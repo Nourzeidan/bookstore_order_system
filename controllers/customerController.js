@@ -17,8 +17,7 @@ exports.logout = (req, res) => {
 exports.getProfile = (req, res) => {
     res.render('customer/profile', { user: req.session.user });
 };
-const { usersTable } = require('../routes/auth'); // تأكد إنك استوردت ال array بتاعت المستخدمين
-
+const { usersTable } = require('../routes/auth');
 exports.updateProfile = (req, res) => {
     const sessionUser = req.session.user;
 
