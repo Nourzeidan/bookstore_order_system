@@ -135,16 +135,21 @@ BEGIN
     END IF;
 END //
 DELIMITER ;
-
 DELIMITER //
 CREATE TRIGGER after_book_update
 AFTER UPDATE ON BOOK
 FOR EACH ROW
 BEGIN
-    -- If stock drops below the threshold, place a replenishment order
-    IF OLD.Quantity_In_Stock >= NEW.Threshold AND NEW.Quantity_In_Stock < NEW.Threshold THEN
-        INSERT INTO REPLENISHMENT_ORDER (ISBN, Publisher_ID, Quantity, Order_Date, Status)
-        VALUES (NEW.ISBN, NEW.Publisher_ID, 20, CURDATE(), 'Pending');
+    IF NEW.Quantity_In_Stock < NEW.Threshold THEN
+        -- Check if a pending order for this book already exists to avoid duplicates
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM REPLENISHMENT_ORDER
+            WHERE ISBN = NEW.ISBN AND Status = 'Pending'
+        ) THEN
+            INSERT INTO REPLENISHMENT_ORDER (ISBN, Publisher_ID, Quantity, Order_Date, Status)
+            VALUES (NEW.ISBN, NEW.Publisher_ID, 20, CURDATE(), 'Pending');
+        END IF;
     END IF;
 END //
 DELIMITER ;

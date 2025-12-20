@@ -54,7 +54,7 @@ exports.products = async (req, res) => {
   }
 };
 
-// ================== ADD BOOK ==================
+// Add Book
 exports.addBook = async (req, res) => {
   try {
     const { isbn, title, stock, threshold, category, selling_price } = req.body;
@@ -63,14 +63,16 @@ exports.addBook = async (req, res) => {
       INSERT INTO BOOK 
       (ISBN, Title, Publication_Year, Quantity_In_Stock, Threshold, Category, Selling_Price, Publisher_ID)
       VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, 1)
-    `, [
-      isbn,
-      title,
-      parseInt(stock),
-      parseInt(threshold),
-      category,
-      parseFloat(selling_price)
-    ]);
+    `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price)]);
+
+    // Step 2: Check stock vs threshold
+    if (parseInt(stock) < parseInt(threshold)) {
+      await pool.query(`
+        INSERT INTO REPLENISHMENT_ORDER 
+        (ISBN, Publisher_ID, Quantity, Order_Date, Status)
+        VALUES (?, 1, 20, CURDATE(), 'Pending')
+      `, [isbn]);
+    }
 
     res.redirect('/admin/products');
   } catch (err) {
@@ -80,25 +82,34 @@ exports.addBook = async (req, res) => {
   }
 };
 
-// ================== UPDATE BOOK ==================
+// Update Book
 exports.updateBook = async (req, res) => {
   try {
     const { isbn, stock } = req.body;
-    const [book] = await pool.query('SELECT * FROM BOOK WHERE ISBN=?', [isbn]);
 
+    const [book] = await pool.query('SELECT * FROM BOOK WHERE ISBN=?', [isbn]);
     if (!book.length) {
       req.session.error = 'Book not found';
       return res.redirect('/admin/products');
     }
 
-    if (parseInt(stock) < 0) {
-      req.session.error = 'Stock cannot be negative';
-      return res.redirect('/admin/products');
-    }
-
     await pool.query('UPDATE BOOK SET Quantity_In_Stock=? WHERE ISBN=?', [parseInt(stock), isbn]);
 
-    // Auto-order handled by DB trigger
+    // Check threshold and insert pending order if needed
+    if (parseInt(stock) < book[0].Threshold) {
+      const [existingOrder] = await pool.query(`
+        SELECT 1 FROM REPLENISHMENT_ORDER 
+        WHERE ISBN=? AND Status='Pending'
+      `, [isbn]);
+
+      if (!existingOrder.length) {
+        await pool.query(`
+          INSERT INTO REPLENISHMENT_ORDER 
+          (ISBN, Publisher_ID, Quantity, Order_Date, Status)
+          VALUES (?, ?, 20, CURDATE(), 'Pending')
+        `, [isbn, book[0].Publisher_ID]);
+      }
+    }
 
     res.redirect('/admin/products');
   } catch (err) {
