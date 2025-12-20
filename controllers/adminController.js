@@ -63,7 +63,7 @@ exports.products = async (req, res) => {
 // Add Book
 exports.addBook = async (req, res) => {
   try {
-    const { isbn, title, stock, threshold, category, selling_price, author_id, publisher_id } = req.body;
+    const { isbn, title, stock, threshold, category, selling_price, publisher_id } = req.body;
 
     await pool.query(`
       INSERT INTO BOOK 
@@ -71,10 +71,17 @@ exports.addBook = async (req, res) => {
       VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, ?)
     `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price), publisher_id]);
 
-    await pool.query(`
-      INSERT INTO BOOK_AUTHOR (ISBN, Author_ID)
-      VALUES (?, ?)
-    `, [isbn, author_id]);
+    // Handle single or multiple authors
+    let authors = req.body.author_id;
+    if (!Array.isArray(authors)) authors = [authors]; // wrap single selection in array
+
+    // Insert each author
+    for (let author_id of authors) {
+      await pool.query(`
+        INSERT INTO BOOK_AUTHOR (ISBN, Author_ID)
+        VALUES (?, ?)
+      `, [isbn, author_id]);
+    }
 
     if (parseInt(stock) < parseInt(threshold)) {
       await pool.query(`
@@ -87,10 +94,17 @@ exports.addBook = async (req, res) => {
     res.redirect('/admin/products');
   } catch (err) {
     console.error(err);
-    req.session.error = 'Error adding book';
+
+    if (err.code === 'ER_DUP_ENTRY') {
+      req.session.error = 'ISBN already exists. Please enter a unique ISBN.';
+    } else {
+      req.session.error = 'Error adding book';
+    }
+
     res.redirect('/admin/products');
   }
 };
+
 
 // Update Book
 exports.updateBook = async (req, res) => {
@@ -159,28 +173,42 @@ exports.searchBooks = async (req, res) => {
     const { query } = req.query;
 
     const [books] = await pool.query(`
-      SELECT 
-        b.ISBN, 
-        b.Title, 
-        b.Quantity_In_Stock AS stock, 
-        b.Threshold, 
-        b.Selling_Price AS selling_price,
-        b.Category,
-        p.Name AS Publisher_Name,
-        GROUP_CONCAT(a.Author_Name SEPARATOR ', ') AS authors
-      FROM BOOK b
-      JOIN PUBLISHER p ON b.Publisher_ID = p.Publisher_ID
-      LEFT JOIN BOOK_AUTHOR ba ON b.ISBN = ba.ISBN
-      LEFT JOIN AUTHOR a ON ba.Author_ID = a.Author_ID
-      WHERE b.ISBN LIKE ? OR b.Title LIKE ? OR b.Category LIKE ?
-      GROUP BY b.ISBN
-    `, [`%${query}%`, `%${query}%`, `%${query}%`]);
+  SELECT 
+    b.ISBN, 
+    b.Title, 
+    b.Quantity_In_Stock AS stock, 
+    b.Threshold, 
+    b.Selling_Price AS selling_price,
+    b.Category,
+    p.Name AS Publisher_Name,
+    GROUP_CONCAT(a.Author_Name SEPARATOR ', ') AS authors
+  FROM BOOK b
+  JOIN PUBLISHER p ON b.Publisher_ID = p.Publisher_ID
+  LEFT JOIN BOOK_AUTHOR ba ON b.ISBN = ba.ISBN
+  LEFT JOIN AUTHOR a ON ba.Author_ID = a.Author_ID
+  WHERE b.ISBN LIKE ? 
+     OR b.Title LIKE ? 
+     OR b.Category LIKE ? 
+     OR p.Name LIKE ?
+     OR b.ISBN IN (
+        SELECT ba2.ISBN
+        FROM BOOK_AUTHOR ba2
+        JOIN AUTHOR a2 ON ba2.Author_ID = a2.Author_ID
+        WHERE a2.Author_Name LIKE ?
+     )
+  GROUP BY b.ISBN
+`, [`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`]);
+
 
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
     `);
 
-    res.render('admin/product_management', { books, orders, error: null, authors: [], publishers: [] });
+    // Fetch authors and publishers for the dropdowns
+    const [authors] = await pool.query(`SELECT Author_ID, Author_Name FROM AUTHOR`);
+    const [publishers] = await pool.query(`SELECT Publisher_ID, Name FROM PUBLISHER`);
+
+    res.render('admin/product_management', { books, orders, error: null, authors, publishers });
   } catch (err) {
     console.error(err);
     res.send('Database error');

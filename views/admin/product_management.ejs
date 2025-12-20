@@ -68,15 +68,18 @@
 
     <!-- Author Dropdown -->
     <div class="col-md-4">
-      <label class="form-label">Author</label>
-      <select class="form-select" name="author_id">
-        <option value="">Select Author</option>
-        <% authors.forEach(a => { %>
-          <option value="<%= a.Author_ID %>"><%= a.Author_Name %></option>
-        <% }) %>
-      </select>
-    </div>
-
+  <label class="form-label">Authors</label>
+  <div class="border p-2" style="max-height:150px; overflow-y:auto;">
+    <% authors.forEach(a => { %>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="author_id[]" value="<%= a.Author_ID %>" id="author_<%= a.Author_ID %>">
+        <label class="form-check-label" for="author_<%= a.Author_ID %>">
+          <%= a.Author_Name %>
+        </label>
+      </div>
+    <% }) %>
+  </div>
+</div>
     <!-- Publisher Dropdown -->
     <div class="col-md-4">
       <label class="form-label">Publisher</label>
@@ -167,10 +170,10 @@
     const threshold = parseInt(form.threshold.value);
     const sellingPrice = parseFloat(form.selling_price.value);
     const category = form.category.value;
-    const author = form.author_id.value;
+    const authorCheckboxes = form.querySelectorAll('input[name="author_id[]"]:checked');
     const publisher = form.publisher_id.value;
 
-    if (!form.isbn.value || !form.title.value || !category || isNaN(stock) || isNaN(sellingPrice) || isNaN(threshold) || !author || !publisher) {
+    if (!form.isbn.value || !form.title.value || !category || isNaN(stock) || isNaN(sellingPrice) || isNaN(threshold) || authorCheckboxes.length === 0 || !publisher) {
       e.preventDefault();
       showAlert('All fields are required and must be valid.');
       return;
