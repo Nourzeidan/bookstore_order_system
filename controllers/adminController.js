@@ -58,10 +58,20 @@ exports.products = async (req, res) => {
 exports.addBook = async (req, res) => {
   try {
     const { isbn, title, stock, threshold, category, selling_price } = req.body;
+
     await pool.query(`
-      INSERT INTO BOOK (ISBN, Title, Quantity_In_Stock, Threshold, Category, Selling_Price, Publisher_ID)
-      VALUES (?, ?, ?, ?, ?, ?, 1)
-    `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price)]);
+      INSERT INTO BOOK 
+      (ISBN, Title, Publication_Year, Quantity_In_Stock, Threshold, Category, Selling_Price, Publisher_ID)
+      VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, 1)
+    `, [
+      isbn,
+      title,
+      parseInt(stock),
+      parseInt(threshold),
+      category,
+      parseFloat(selling_price)
+    ]);
+
     res.redirect('/admin/products');
   } catch (err) {
     console.error(err);
@@ -128,9 +138,16 @@ exports.searchBooks = async (req, res) => {
   try {
     const { query } = req.query;
     const [books] = await pool.query(`
-      SELECT * FROM BOOK
-      WHERE ISBN LIKE ? OR Title LIKE ? OR Category LIKE ?
-    `, [`%${query}%`, `%${query}%`, `%${query}%`]);
+  SELECT
+    ISBN,
+    Title,
+    Quantity_In_Stock AS stock,
+    Threshold,
+    Selling_Price AS selling_price,
+    Category
+  FROM BOOK
+  WHERE ISBN LIKE ? OR Title LIKE ? OR Category LIKE ?
+`, [`%${query}%`, `%${query}%`, `%${query}%`]);
 
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
