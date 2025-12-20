@@ -46,6 +46,7 @@ router.post('/profile', isCustomer, customerController.updateProfile);
 
 // --- 3. PRODUCTS ---
 router.get('/product_list', isCustomer, customerController.searchBooks);
+router.get('/products/search', customerController.searchProducts);
 
 // --- 4. CART ---
 // Note: If you use the Database cart, make sure these names match
@@ -57,4 +58,5 @@ router.post('/cart/remove/:isbn', isCustomer, customerController.removeFromCart)
 router.get('/checkout', isCustomer, customerController.getCheckout);
 router.post('/checkout', isCustomer, customerController.postCheckout);
 router.get('/order_history', isCustomer, customerController.viewOrders);
+
 module.exports = router;

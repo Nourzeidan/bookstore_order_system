@@ -44,21 +44,27 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <% let total = 0; %>
-                                    <% cart.forEach(item => { %>
-                                        <% total += item.price * item.quantity; %>
+                                    <% 
+                                        let totalPrice = 0; 
+                                        let totalItemsCount = 0; 
+                                    %>
+                                    <% cart.forEach(item => { 
+                                        let subtotal = item.price * item.quantity;
+                                        totalPrice += subtotal;
+                                        totalItemsCount += item.quantity;
+                                    %>
                                         <tr>
                                             <td class="ps-4">
                                                 <span class="fw-bold"><%= item.title %></span>
-                                                <br><small class="text-muted">ISBN: <%= item.isbn %></small>
+                                                <br><small class="text-muted">ISBN: <%= item.ISBN %></small>
                                             </td>
                                             <td>$<%= item.price %></td>
                                             <td>
                                                 <span class="badge bg-secondary px-3 py-2"><%= item.quantity %></span>
                                             </td>
-                                            <td class="fw-bold">$<%= item.price * item.quantity %></td>
+                                            <td class="fw-bold">$<%= subtotal.toFixed(2) %></td>
                                             <td class="text-end pe-4">
-                                                <form method="POST" action="/customer/cart/remove/<%= item.isbn %>" class="d-inline">
+                                                <form method="POST" action="/customer/cart/remove/<%= item.ISBN %>" class="d-inline">
                                                     <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
                                                 </form>
                                             </td>
@@ -77,13 +83,17 @@
                         </div>
                         <div class="card-body">
                             <div class="d-flex justify-content-between mb-2">
-                                <span>Items:</span>
+                                <span>Items (Total Qty):</span>
+                                <span class="fw-bold"><%= totalItemsCount %></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 text-muted small">
+                                <span>Unique Titles:</span>
                                 <span><%= cart.length %></span>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between mb-4">
-                                <span class="h5">Total:</span>
-                                <span class="h5 text-primary">$<%= total %></span>
+                                <span class="h5">Total Price:</span>
+                                <span class="h5 text-primary">$<%= totalPrice.toFixed(2) %></span>
                             </div>
                             <div class="d-grid gap-2">
                                 <a href="/customer/checkout" class="btn btn-success btn-lg">Proceed to Checkout</a>
