@@ -56,5 +56,6 @@ router.post('/cart/remove/:isbn', isCustomer, customerController.removeFromCart)
 router.get('/checkout', isCustomer, customerController.getCheckout);
 router.post('/checkout', isCustomer, customerController.postCheckout);
 router.get('/order_history', isCustomer, customerController.viewOrders);
+router.get('/orders/:id', isCustomer, customerController.viewOrderDetails);
 
 module.exports = router;

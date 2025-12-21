@@ -46,16 +46,30 @@
                                     <tbody>
                                         <% orders.forEach(order => { %>
                                             <tr>
-                                                <td><span class="fw-bold">#<%= order.id || order.Order_ID %></span></td>
-                                                <td><%= order.date || order.Order_Date %></td>
-                                                <td>$<%= (order.total || order.Total_Price) %></td>
+                                                <td><span class="fw-bold">#<%= order.Order_ID %></span></td>
                                                 <td>
-                                                    <span class="badge rounded-pill bg-success text-white">
-                                                        <%= order.status || 'Completed' %>
+                                                    <%= new Date(order.Order_Date).toLocaleDateString('en-US', { 
+                                                        year: 'numeric', 
+                                                        month: 'short', 
+                                                        day: 'numeric' 
+                                                    }) %>
+                                                </td>
+                                                <td>$<%= parseFloat(order.Total_Price).toFixed(2) %></td>
+                                                <td>
+                                                    <% 
+                                                        let badgeColor = 'bg-warning';
+                                                        if (order.Status === 'Completed' || order.Status === 'Delivered') {
+                                                            badgeColor = 'bg-success';
+                                                        } else if (order.Status === 'Cancelled') {
+                                                            badgeColor = 'bg-danger';
+                                                        }
+                                                    %>
+                                                    <span class="badge rounded-pill <%= badgeColor %> text-white">
+                                                        <%= order.Status %>
                                                     </span>
                                                 </td>
                                                 <td class="text-end">
-                                                    <a href="/customer/orders/<%= order.id || order.Order_ID %>" 
+                                                    <a href="/customer/orders/<%= order.Order_ID %>" 
                                                        class="btn btn-primary btn-sm">View Details</a>
                                                 </td>
                                             </tr>

@@ -153,6 +153,23 @@ exports.viewCart = async (req, res) => {
     }
 };
 
+// exports.viewOrders = async (req, res) => {
+//     try {
+//         const [orders] = await db.execute(
+//             'SELECT * FROM ORDERS WHERE Customer_Username = ?', 
+//             [req.session.user.username]
+//         );
+//         res.render('customer/order_history', { orders });
+//     } catch (err) {
+//         // This will print the error to your console so you can see the column names
+//         console.error("SQL Error in viewOrders:", err.message);
+//         res.status(500).send(err.message);
+//     }
+// };
+// exports.logout = (req, res) => {
+//     req.session.destroy();
+//     res.redirect('/login');
+// };
 exports.viewOrders = async (req, res) => {
     try {
         const [orders] = await db.execute(
@@ -180,29 +197,218 @@ exports.getCheckout = (req, res) => {
 };
 
 // 2. Process Checkout (The Database part)
+// exports.postCheckout = async (req, res) => {
+//     try {
+//         // Here you would normally insert into ORDERS and ORDER_ITEM tables
+//         // For now, let's just clear the cart to stop the crash
+//         req.session.cart = [];
+//         res.redirect('/customer/order_history');
+//     } catch (err) {
+//         res.status(500).send(err.message);
+//     }
+// };
 exports.postCheckout = async (req, res) => {
+    const username = req.session.user.username;
+
     try {
-        // Here you would normally insert into ORDERS and ORDER_ITEM tables
-        // For now, let's just clear the cart to stop the crash
-        req.session.cart = [];
+        console.log("=== CHECKOUT STARTED ===");
+        console.log("Username:", username);
+
+        // 1. Get the user's cart
+        const [[cart]] = await db.execute(
+            'SELECT Cart_ID FROM SHOPPING_CART WHERE Customer_Username = ?',
+            [username]
+        );
+
+        if (!cart) {
+            console.log("ERROR: Cart not found");
+            return res.status(400).send("Cart not found");
+        }
+
+        const cartId = cart.Cart_ID;
+        console.log("Cart ID:", cartId);
+
+        // 2. Get all items in the cart with stock information
+        const [cartItems] = await db.execute(`
+            SELECT 
+                CI.ISBN, 
+                CI.Quantity, 
+                B.Selling_Price,
+                B.Title,
+                B.Quantity_In_Stock
+            FROM CART_ITEM CI
+            JOIN BOOK B ON CI.ISBN = B.ISBN
+            WHERE CI.Cart_ID = ?`,
+            [cartId]
+        );
+
+        console.log("Cart Items found:", cartItems.length);
+
+        if (cartItems.length === 0) {
+            console.log("ERROR: Cart is empty");
+            return res.status(400).send("Cart is empty");
+        }
+
+        // 3. Validate stock availability for each item
+        console.log("Validating stock availability...");
+        const outOfStockItems = [];
+        
+        for (const item of cartItems) {
+            console.log(`  ${item.Title}: Want ${item.Quantity}, Available ${item.Quantity_In_Stock}`);
+            
+            if (item.Quantity_In_Stock < item.Quantity) {
+                outOfStockItems.push({
+                    title: item.Title,
+                    requested: item.Quantity,
+                    available: item.Quantity_In_Stock
+                });
+            }
+        }
+
+        // If any items are out of stock, return error
+        if (outOfStockItems.length > 0) {
+            console.log("ERROR: Some items are out of stock");
+            let errorMsg = "Sorry, the following items don't have enough stock:<br>";
+            outOfStockItems.forEach(item => {
+                errorMsg += `<br>• ${item.title}: You want ${item.requested}, but only ${item.available} available`;
+            });
+            return res.status(400).send(errorMsg);
+        }
+
+        console.log("✓ All items have sufficient stock");
+
+        // 4. Calculate total price - Convert string to number
+        let totalPrice = 0;
+        for (const item of cartItems) {
+            const price = parseFloat(item.Selling_Price);
+            const quantity = parseInt(item.Quantity);
+            const itemTotal = price * quantity;
+            
+            console.log(`${item.Title}: ${price} x ${quantity} = ${itemTotal}`);
+            totalPrice += itemTotal;
+        }
+
+        console.log("Total Price:", totalPrice);
+        
+        if (isNaN(totalPrice) || totalPrice === 0) {
+            console.error("ERROR: Invalid total price calculation");
+            return res.status(500).send("Error calculating order total");
+        }
+
+        // 5. Create the order
+        const [orderResult] = await db.execute(
+            `INSERT INTO ORDERS (Order_Date, Total_Price, Status, Customer_Username) 
+             VALUES (CURDATE(), ?, 'Completed', ?)`,
+            [totalPrice, username]
+        );
+
+        const orderId = orderResult.insertId;
+        console.log("✓ Created Order ID:", orderId);
+
+        // 6. Insert items into ORDER_ITEM table
+        console.log("Inserting order items...");
+        for (const item of cartItems) {
+            const price = parseFloat(item.Selling_Price);
+            
+            await db.execute(
+                `INSERT INTO ORDER_ITEM (Order_ID, ISBN, Quantity, Price) 
+                 VALUES (?, ?, ?, ?)`,
+                [orderId, item.ISBN, item.Quantity, price]
+            );
+            console.log(`  ✓ Inserted: ${item.Title}`);
+        }
+        console.log("✓ All order items inserted");
+
+        // 7. Update book stock
+        console.log("Updating book stock...");
+        for (const item of cartItems) {
+            const [result] = await db.execute(
+                `UPDATE BOOK 
+                 SET Quantity_In_Stock = Quantity_In_Stock - ? 
+                 WHERE ISBN = ? AND Quantity_In_Stock >= ?`,
+                [item.Quantity, item.ISBN, item.Quantity]
+            );
+            
+            if (result.affectedRows === 0) {
+                throw new Error(`Failed to update stock for ${item.Title}. Item may have been purchased by someone else.`);
+            }
+            
+            console.log(`  ✓ Updated stock for ${item.Title}`);
+        }
+        console.log("✓ Book stock updated");
+
+        // 8. Clear the cart
+        console.log("Clearing cart...");
+        await db.execute('DELETE FROM CART_ITEM WHERE Cart_ID = ?', [cartId]);
+        console.log("✓ Cart cleared");
+
+        console.log("=== ORDER COMPLETED SUCCESSFULLY ===");
+        
         res.redirect('/customer/order_history');
+
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error("=== CHECKOUT ERROR ===");
+        console.error("Error message:", err.message);
+        console.error("Error stack:", err.stack);
+        res.status(500).send("Checkout failed: " + err.message);
     }
 };
 
 // 3. View Order Details
+// exports.viewOrderDetails = async (req, res) => {
+//     const orderId = req.params.id;
+//     try {
+//         // This is where you query the specific items in an order
+//         const [details] = await db.execute(
+//             'SELECT * FROM ORDER_ITEM WHERE Order_ID = ?', 
+//             [orderId]
+//         );
+//         res.render('customer/orderDetails', { details });
+//     } catch (err) {
+//         res.status(500).send(err.message);
+//     }
+// };
 exports.viewOrderDetails = async (req, res) => {
     const orderId = req.params.id;
+    const username = req.session.user.username;
+    
     try {
-        // This is where you query the specific items in an order
-        const [details] = await db.execute(
-            'SELECT * FROM ORDER_ITEM WHERE Order_ID = ?', 
+        // Get order information
+        const [[order]] = await db.execute(
+            'SELECT * FROM ORDERS WHERE Order_ID = ? AND Customer_Username = ?', 
+            [orderId, username]
+        );
+
+        if (!order) {
+            return res.status(404).send("Order not found");
+        }
+
+        // Get order items with book details
+        const [items] = await db.execute(`
+            SELECT 
+                OI.ISBN,
+                B.Title,
+                A.Author_Name,
+                OI.Quantity,
+                OI.Price,
+                (OI.Quantity * OI.Price) AS Subtotal
+            FROM ORDER_ITEM OI
+            JOIN BOOK B ON OI.ISBN = B.ISBN
+            JOIN BOOK_AUTHOR BA ON B.ISBN = BA.ISBN
+            JOIN AUTHOR A ON BA.Author_ID = A.Author_ID
+            WHERE OI.Order_ID = ?`,
             [orderId]
         );
-        res.render('customer/orderDetails', { details });
+
+        console.log("Order Details:", { order, items });
+
+        res.render('customer/OrderDetails', { 
+            order: order,
+            items: items 
+        });
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error("Order Details Error:", err.message);
+        res.status(500).send("Error loading order details: " + err.message);
     }
 };
 
