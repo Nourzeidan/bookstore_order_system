@@ -1,5 +1,5 @@
 INSERT INTO ADMIN (Username, Password) 
-VALUES ('admin0', SHA2('admin_2005', 256));
+VALUES ('admin0', SHA2('1', 256));
 
 INSERT INTO CUSTOMER VALUES
 ('cust1', 'hashed_pw1', 'Ali', 'Ahmed', 'ali@mail.com', '0100000001', 'Alexandria'),
