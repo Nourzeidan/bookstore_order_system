@@ -12,11 +12,33 @@ exports.searchBooks = async (req, res) => {
     }
 };
 
+// exports.getProfile = async (req, res) => {
+//     try {
+//         const [rows] = await db.execute('SELECT * FROM CUSTOMER WHERE Username = ?', [req.session.user.username]);
+//         res.render('customer/profile', { user: rows[0] });
+//     } catch (err) {
+//         res.redirect('/login');
+//     }
+// };
 exports.getProfile = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT * FROM CUSTOMER WHERE Username = ?', [req.session.user.username]);
-        res.render('customer/profile', { user: rows[0] });
+        // Ensure user is in session
+        if (!req.session.user) return res.redirect('/login');
+
+        const [rows] = await db.execute(
+            'SELECT Username, Email, First_Name, Last_Name, Address, Phone FROM CUSTOMER WHERE Username = ?', 
+            [req.session.user.username]
+        );
+
+        if (rows.length === 0) return res.redirect('/login');
+
+        // Render profile and pass the user data
+        res.render('customer/profile', { 
+            user: rows[0],
+            success: req.query.success // Optional: to show an "Update Successful" message
+        });
     } catch (err) {
+        console.error("Get Profile Error:", err);
         res.redirect('/login');
     }
 };
@@ -27,20 +49,28 @@ exports.updateProfile = async (req, res) => {
 
     try {
         if (password && password.trim() !== '') {
-            const hashed = await bcrypt.hash(password, 10);
+            // Update Username, Email, and Password
             await db.execute(
-                'UPDATE CUSTOMER SET Username = ?, Email = ?, Password = ? WHERE Username = ?',
-                [username, email, hashed, oldUsername]
+                'UPDATE CUSTOMER SET Username = ?, Email = ?, Password = SHA2(?, 256) WHERE Username = ?',
+                [username, email, password, oldUsername]
             );
         } else {
+            // Update only Username and Email
             await db.execute(
                 'UPDATE CUSTOMER SET Username = ?, Email = ? WHERE Username = ?',
                 [username, email, oldUsername]
             );
         }
+
+        // Keep the session in sync so the user isn't logged out
         req.session.user.username = username;
-        res.redirect('/customer/profile');
+        req.session.userId = username;
+
+        req.session.save(() => {
+            res.redirect('/customer/profile?success=1');
+        });
     } catch (err) {
+        console.error("Update Error:", err.message);
         res.status(500).send("Update failed: " + err.message);
     }
 };

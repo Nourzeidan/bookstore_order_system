@@ -1,5 +1,5 @@
-INSERT INTO ADMIN VALUES
-('admin1', 'hashed_admin_pw');
+INSERT INTO ADMIN (Username, Password) 
+VALUES ('admin0', SHA2('admin_2005', 256));
 
 INSERT INTO CUSTOMER VALUES
 ('cust1', 'hashed_pw1', 'Ali', 'Ahmed', 'ali@mail.com', '0100000001', 'Alexandria'),
@@ -50,3 +50,7 @@ INSERT INTO ORDER_ITEM VALUES
 
 INSERT INTO REPLENISHMENT_ORDER VALUES
 (1, 'ISBN3', 1, 20, '2025-03-01', 'Confirmed');
+
+INSERT INTO ORDER_ITEM VALUES
+(1, 'ISBN1', 8, 150.00),
+(1, 'ISBN3', 5, 120.00);

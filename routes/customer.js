@@ -40,6 +40,7 @@ router.get('/logout', customerController.logout);
 // --- 2. PROFILE ---
 router.get('/profile', isCustomer, customerController.getProfile);
 router.post('/profile', isCustomer, customerController.updateProfile);
+// router.get('/profile/update', isCustomer, customerController.updateProfile);
 
 // --- 3. PRODUCTS ---
 router.get('/product_list', isCustomer, customerController.searchBooks);

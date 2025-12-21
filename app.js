@@ -13,7 +13,10 @@ app.use(session({
     secret: 'bookstore_secret',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 3600000 }
+    cookie: { 
+        secure: false, 
+        maxAge: 3600000 
+    }
 }));
 
 // View Engine

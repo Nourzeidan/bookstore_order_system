@@ -30,7 +30,7 @@
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <div class="text-center mb-4">
-                    <h1 class="h3">Welcome, <span class="text-primary"><%= user.username %></span>!</h1>
+                    <h1 class="h3">Welcome, <span class="text-primary"><%= user.Username %></span>!</h1>
                     <p class="text-muted">Manage your personal information below</p>
                 </div>
 
@@ -41,19 +41,19 @@
                     <div class="card-body">
                         <form action="/customer/profile" method="POST">
                             <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" value="<%= user.username %>" required>
+                                <label class="form-label">Username</label>
+                                <input type="text" name="username" class="form-control" value="<%= user.Username || user.username %>" required>
                             </div>
 
                             <div class="mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control" id="email" name="email" value="<%= user.email || '' %>" placeholder="name@example.com">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" name="email" class="form-control" value="<%= user.Email || user.email %>" required>
                             </div>
 
                             <div class="mb-4">
-                                <label for="password" class="form-label">New Password</label>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current">
-                                <div class="form-text">Choose a strong password for better security.</div>
+                                <label class="form-label">New Password</label>
+                                <input type="password" name="password" class="form-control" placeholder="Leave blank to keep current password">
+                                <!-- <div class="form-text">If you enter a new password, it will be updated using database-level SHA2 hashing.</div> -->
                             </div>
 
                             <div class="d-grid">
