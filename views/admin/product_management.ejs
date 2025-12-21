@@ -105,50 +105,72 @@
   </form>
 
   <!-- Book Table -->
-  <h4>Existing Books</h4>
-  <div class="table-responsive">
-    <table class="table table-bordered table-hover align-middle">
-      <thead class="table-light">
-  <tr>
-    <th>ISBN</th>
-    <th>Title</th>
-    <th>Stock</th>
-    <th>Threshold</th>
-    <th>Selling Price</th>
-    <th>Category</th>
-    <th>Author</th>
-    <th>Publisher</th>
-    <th>Action</th>
-  </tr>
-</thead>
-      <tbody>
-  <% books.forEach(book => { %>
-  <tr>
-    <td><%= book.ISBN %></td>
-    <td><%= book.Title %></td>
-    <td><%= book.stock %></td>
-    <td><%= book.Threshold %></td>
-    <td><%= book.selling_price %></td>
-    <td><%= book.Category %></td>
-    <td><%= book.authors %></td>
-    <td><%= book.Publisher_Name %></td>
-    <td>
-      <!-- Update Stock Form -->
-      <form class="updateBookForm d-flex gap-2" action="/admin/products/update" method="POST">
-        <input type="hidden" name="isbn" value="<%= book.ISBN %>">
-        <input type="number" class="form-control form-control-sm stockInput" name="stock" placeholder="Stock">
-        <button class="btn btn-sm btn-warning" type="submit">Update</button>
-      </form>
+ <h4>Existing Books</h4>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>ISBN</th>
+        <th>Title</th>
+        <th>Stock</th>
+        <th>Threshold</th>
+        <th>Selling Price</th>
+        <th>Category</th>
+        <th>Author</th>
+        <th>Publisher</th>
+        <th>Status</th> <!-- NEW COLUMN -->
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% books.forEach(book => { %>
+      <tr>
+        <td><%= book.ISBN %></td>
+        <td><%= book.Title %></td>
+        <td>
+          <%= book.stock %>
+          <!-- Show warning badge if below threshold -->
+          <% if (book.stock < book.Threshold) { %>
+            <span class="badge bg-danger ms-1">Low</span>
+          <% } %>
+        </td>
+        <td><%= book.Threshold %></td>
+        <td>$<%= book.selling_price %></td>
+        <td><%= book.Category %></td>
+        <td><%= book.authors %></td>
+        <td><%= book.Publisher_Name %></td>
+        
+        <!-- NEW STATUS COLUMN -->
+        <td>
+          <% if (book.stock < book.Threshold) { %>
+            <% if (orders.find(o => o.ISBN === book.ISBN && o.Status === 'Pending')) { %>
+              <span class="badge bg-warning text-dark">Order Pending</span>
+            <% } else { %>
+              <span class="badge bg-info text-dark">Order Created</span>
+            <% } %>
+          <% } else { %>
+            <span class="badge bg-success">OK</span>
+          <% } %>
+        </td>
+        
+        <td>
+          <!-- Update Stock Form -->
+          <form class="updateBookForm d-flex gap-2" action="/admin/products/update" method="POST">
+            <input type="hidden" name="isbn" value="<%= book.ISBN %>">
+            <input type="number" class="form-control form-control-sm stockInput" name="stock" placeholder="Stock">
+            <button class="btn btn-sm btn-warning" type="submit">Update</button>
+          </form>
 
-      <% if (orders.find(o => o.ISBN === book.ISBN && o.Status === 'Pending')) { %>
-        <a href="/admin/orders/confirm/<%= book.ISBN %>" class="btn btn-sm btn-success mt-1">Confirm Order</a>
-      <% } %>
-    </td>
-  </tr>
-  <% }) %>
-</tbody>
-    </table>
-  </div>
+          <!-- Confirm Order Button (only if pending order exists) -->
+          <% if (orders.find(o => o.ISBN === book.ISBN && o.Status === 'Pending')) { %>
+            <a href="/admin/orders/confirm/<%= book.ISBN %>" class="btn btn-sm btn-success mt-1">Confirm Order</a>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
 
 </div>
 
