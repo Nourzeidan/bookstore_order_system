@@ -57,5 +57,5 @@ router.get('/checkout', isCustomer, customerController.getCheckout);
 router.post('/checkout', isCustomer, customerController.postCheckout);
 router.get('/order_history', isCustomer, customerController.viewOrders);
 router.get('/orders/:id', isCustomer, customerController.viewOrderDetails);
-
+router.get('/orders', isCustomer, customerController.viewOrders);
 module.exports = router;
