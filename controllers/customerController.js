@@ -1,17 +1,6 @@
 const db = require('../config/database');
 const bcrypt = require('bcrypt');
 
-exports.searchBooks = async (req, res) => {
-    try {
-        const [books] = await db.execute(
-            `SELECT ISBN AS isbn, Title AS title, Selling_Price AS price, Quantity_In_Stock AS stock FROM BOOK`
-        );
-        res.render('customer/product_list', { books });
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-};
-
 exports.getProfile = async (req, res) => {
     try {
         // Ensure user is in session
@@ -410,7 +399,24 @@ exports.removeFromCart = async (req, res) => {
 // 1. View All Products
 exports.getProductList = async (req, res) => {
     try {
-        const [books] = await db.execute('SELECT * FROM BOOK');
+        const [books] = await db.execute(`
+            SELECT 
+                b.ISBN, 
+                b.Title, 
+                b.Quantity_In_Stock AS stock, 
+                b.Selling_Price AS selling_price,
+                b.Category,
+                p.Name AS Publisher_Name,
+                GROUP_CONCAT(a.Author_Name SEPARATOR ', ') AS authors
+            FROM BOOK b
+            JOIN PUBLISHER p ON b.Publisher_ID = p.Publisher_ID
+            LEFT JOIN BOOK_AUTHOR ba ON b.ISBN = ba.ISBN
+            LEFT JOIN AUTHOR a ON ba.Author_ID = a.Author_ID
+            GROUP BY b.ISBN
+        `);
+        
+        console.log('First book in product list:', books[0]);
+        
         res.render('customer/product_list', { 
             books: books, 
             searchQuery: null 
@@ -420,34 +426,60 @@ exports.getProductList = async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 };
-
 // 2. Search Products Logic
 exports.searchProducts = async (req, res) => {
     const { query } = req.query;
     
-    // If the query is empty, just redirect to the full list
+    // 1. Redirect to full list if search is empty
     if (!query) return res.redirect('/customer/product_list');
 
     try {
         const searchTerm = `%${query}%`;
         
-        // Ensure table names and columns match exactly what is in your phpMyAdmin
-        const [books] = await db.execute(
-        `SELECT * FROM BOOK 
-        WHERE Title LIKE ? 
-        OR ISBN LIKE ? 
-        OR Category LIKE ? `,
-        [searchTerm, searchTerm, searchTerm] // 4 placeholders = 4 searchTerms
-    );
+        // 2. Execute search with 5 placeholders for ISBN, Title, Category, Publisher, and Author
+        const [books] = await db.execute(`
+            SELECT 
+                b.ISBN, 
+                b.Title, 
+                b.Quantity_In_Stock AS stock, 
+                b.Selling_Price AS selling_price,
+                b.Category,
+                p.Name AS Publisher_Name,
+                GROUP_CONCAT(a.Author_Name SEPARATOR ', ') AS authors
+            FROM BOOK b
+            JOIN PUBLISHER p ON b.Publisher_ID = p.Publisher_ID
+            LEFT JOIN BOOK_AUTHOR ba ON b.ISBN = ba.ISBN
+            LEFT JOIN AUTHOR a ON ba.Author_ID = a.Author_ID
+            WHERE b.ISBN LIKE ? 
+               OR b.Title LIKE ? 
+               OR b.Category LIKE ? 
+               OR p.Name LIKE ?
+               OR b.ISBN IN (
+                   SELECT ba2.ISBN
+                   FROM BOOK_AUTHOR ba2
+                   JOIN AUTHOR a2 ON ba2.Author_ID = a2.Author_ID
+                   WHERE a2.Author_Name LIKE ?
+               )
+            GROUP BY b.ISBN
+        `, [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]);
+
+        // 3. Optional: Get fresh data for filters if your sidebar uses them
+        const [authors] = await db.execute(`SELECT Author_ID, Author_Name FROM AUTHOR`);
+        const [publishers] = await db.execute(`SELECT Publisher_ID, Name FROM PUBLISHER`);
 
         console.log(`Search found ${books.length} results for: ${query}`);
+        console.log('First book data:', books[0]);
 
+        // 4. FIX: Removed 'orders' because it's not defined in this scope
         res.render('customer/product_list', { 
-            books: books, 
-            searchQuery: query 
+            books, 
+            error: null, 
+            authors, 
+            publishers,
+            searchQuery: query // Pass back the query to show in the "Results for..." text
         });
+
     } catch (err) {
-        // This will print the EXACT database error to your terminal
         console.error("DATABASE ERROR DURING SEARCH:", err.message);
         res.status(500).send("Search failed: " + err.message);
     }

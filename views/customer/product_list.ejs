@@ -114,9 +114,10 @@
                     <div class="card h-100 shadow-sm">
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title"><%= book.Title || book.title %></h5>
-                            <p class="card-text text-muted mb-1">Author: <%= book.Author || 'Unknown' %></p>
+                            <!-- <p class="card-text text-muted mb-1">Author: <%= book.authors  || 'Unknown' || book.Author_Name %></p> -->
                             <p class="card-text text-muted mb-1 small">Category: <%= book.Category || 'General' %></p>
-                            <h6 class="text-primary mb-3">$<%= book.Selling_Price || book.price %></h6>
+                            <p class="card-text text-muted mb-1">Author: <%= book.authors || 'Unknown' %></p>
+                            <h6 class="text-primary mb-3">$<%= book.selling_price %></h6>
                             
                             <div class="mt-auto">
                                 <p class="small <%= (book.Quantity_In_Stock || book.stock) > 0 ? 'text-success' : 'text-danger' %>">

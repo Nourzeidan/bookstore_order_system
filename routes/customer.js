@@ -12,7 +12,7 @@ router.post('/profile', isCustomer, customerController.updateProfile);
 // router.get('/profile/update', isCustomer, customerController.updateProfile);
 
 // --- 3. PRODUCTS ---
-router.get('/product_list', isCustomer, customerController.searchBooks);
+router.get('/product_list', isCustomer, customerController.getProductList);
 router.get('/products/search', customerController.searchProducts);
 
 // --- 4. CART ---
