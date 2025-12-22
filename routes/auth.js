@@ -12,35 +12,32 @@ router.get('/signup', (req, res) => res.render('signup', { error: null }));
 router.post('/signup', async (req, res) => {
     const { username, password, email, address, phone, first_name, last_name   } = req.body;
 
-    // --- VALIDATION SECTION ---
-    
-    // 1. Check for empty fields
+    // check empty fields
     if (!username || !password || !email || !address || !phone) {
         return res.render('signup', { error: 'All fields are required.' });
     }
 
-    // 2. Username Length Validation
+    // username length Validation
     if (username.length < 3) {
         return res.render('signup', { error: 'Username must be at least 3 characters long.' });
     }
 
-    // 3. Password Strength Validation
+    // Password Strength Validation
     if (password.length < 8) {
         return res.render('signup', { error: 'Password must be at least 8 characters long.' });
     }
 
-    // 4. Email Format Validation (Regex)
+    // Email Format Validation (Regex)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         return res.render('signup', { error: 'Please enter a valid email address.' });
     }
 
-    // 5. Phone Number Validation (Numeric check)
+    // Phone Number Validation (Numeric check)
     if (isNaN(phone) || phone.length < 10) {
         return res.render('signup', { error: 'Please enter a valid numeric phone number.' });
     }
 
-    // --- DATABASE EXECUTION ---
     try {
         await db.query(
             `INSERT INTO CUSTOMER (Username, Password, Email, Address, Phone, First_Name, Last_Name)
@@ -55,7 +52,7 @@ router.post('/signup', async (req, res) => {
 
     } catch (error) {
         console.error("Signup DB Error:", error);
-        // Handle duplicate entries (Username or Email)
+  
         if (error.code === 'ER_DUP_ENTRY') {
             return res.render('signup', { error: 'Username or Email is already taken.' });
         }

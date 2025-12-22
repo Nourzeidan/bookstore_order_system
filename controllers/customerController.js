@@ -12,14 +12,6 @@ exports.searchBooks = async (req, res) => {
     }
 };
 
-// exports.getProfile = async (req, res) => {
-//     try {
-//         const [rows] = await db.execute('SELECT * FROM CUSTOMER WHERE Username = ?', [req.session.user.username]);
-//         res.render('customer/profile', { user: rows[0] });
-//     } catch (err) {
-//         res.redirect('/login');
-//     }
-// };
 exports.getProfile = async (req, res) => {
     try {
         // Ensure user is in session
@@ -35,7 +27,7 @@ exports.getProfile = async (req, res) => {
         // Render profile and pass the user data
         res.render('customer/profile', { 
             user: rows[0],
-            success: req.query.success // Optional: to show an "Update Successful" message
+            success: req.query.success 
         });
     } catch (err) {
         console.error("Get Profile Error:", err);
@@ -153,23 +145,6 @@ exports.viewCart = async (req, res) => {
     }
 };
 
-// exports.viewOrders = async (req, res) => {
-//     try {
-//         const [orders] = await db.execute(
-//             'SELECT * FROM ORDERS WHERE Customer_Username = ?', 
-//             [req.session.user.username]
-//         );
-//         res.render('customer/order_history', { orders });
-//     } catch (err) {
-//         // This will print the error to your console so you can see the column names
-//         console.error("SQL Error in viewOrders:", err.message);
-//         res.status(500).send(err.message);
-//     }
-// };
-// exports.logout = (req, res) => {
-//     req.session.destroy();
-//     res.redirect('/login');
-// };
 exports.viewOrders = async (req, res) => {
     try {
         const [orders] = await db.execute(
@@ -188,25 +163,13 @@ exports.logout = (req, res) => {
     res.redirect('/login');
 };
 
-// Add these to the bottom of controllers/customerController.js
 
-// 1. Checkout View
+// checkout
 exports.getCheckout = (req, res) => {
     const cart = req.session.cart || [];
     res.render('customer/checkout', { cart, error: null });
 };
 
-// 2. Process Checkout (The Database part)
-// exports.postCheckout = async (req, res) => {
-//     try {
-//         // Here you would normally insert into ORDERS and ORDER_ITEM tables
-//         // For now, let's just clear the cart to stop the crash
-//         req.session.cart = [];
-//         res.redirect('/customer/order_history');
-//     } catch (err) {
-//         res.status(500).send(err.message);
-//     }
-// };
 exports.postCheckout = async (req, res) => {
     const username = req.session.user.username;
 
@@ -354,20 +317,6 @@ exports.postCheckout = async (req, res) => {
     }
 };
 
-// 3. View Order Details
-// exports.viewOrderDetails = async (req, res) => {
-//     const orderId = req.params.id;
-//     try {
-//         // This is where you query the specific items in an order
-//         const [details] = await db.execute(
-//             'SELECT * FROM ORDER_ITEM WHERE Order_ID = ?', 
-//             [orderId]
-//         );
-//         res.render('customer/orderDetails', { details });
-//     } catch (err) {
-//         res.status(500).send(err.message);
-//     }
-// };
 exports.viewOrderDetails = async (req, res) => {
     const orderId = req.params.id;
     const username = req.session.user.username;
@@ -432,7 +381,6 @@ exports.removeFromCart = async (req, res) => {
         );
 
         if (item) {
-            // Support both 'Quantity' and 'quantity' to avoid undefined errors
             const currentQty = item.Quantity || item.quantity;
 
             if (currentQty > 1) {
