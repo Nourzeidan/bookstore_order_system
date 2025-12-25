@@ -154,6 +154,32 @@ BEGIN
 END //
 DELIMITER ;
 
+DELIMITER //
+CREATE TRIGGER after_book_insert
+AFTER INSERT ON BOOK
+FOR EACH ROW
+BEGIN
+    IF NEW.Quantity_In_Stock < NEW.Threshold THEN
+        INSERT INTO REPLENISHMENT_ORDER (ISBN, Publisher_ID, Quantity, Order_Date, Status)
+        VALUES (NEW.ISBN, NEW.Publisher_ID, 20, CURDATE(), 'Pending');
+    END IF;
+END //
+DELIMITER ;
+
+DELIMITER //
+
+CREATE TRIGGER before_book_insert
+BEFORE INSERT ON book
+FOR EACH ROW
+BEGIN
+    IF NEW.Quantity_In_Stock < 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error: Inventory cannot be negative';
+    END IF;
+END;
+//
+
+DELIMITER ;
 ALTER TABLE CUSTOMER
 MODIFY Password VARCHAR(255) NOT NULL;
 

@@ -50,33 +50,13 @@ exports.products = async (req, res) => {
       GROUP BY b.ISBN
     `);
 
-    // Auto Create Replenshimentorders for low stock 
-    for (const book of books) {
-      if (book.stock < book.Threshold) {
-        const [existingOrder] = await pool.query(`
-          SELECT 1 FROM REPLENISHMENT_ORDER 
-          WHERE ISBN = ? AND Status = 'Pending'
-        `, [book.ISBN]);
-
-        if (!existingOrder.length) {
-          await pool.query(`
-            INSERT INTO REPLENISHMENT_ORDER 
-            (ISBN, Publisher_ID, Quantity, Order_Date, Status)
-            VALUES (?, ?, 20, CURDATE(), 'Pending')
-          `, [book.ISBN, book.Publisher_ID]);
-          
-          console.log(`📦 Auto-created replenishment order for ${book.Title} (ISBN: ${book.ISBN})`);
-        }
-      }
-    }
-   
+    // Fetch pending replenishment orders created by triggers
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
     `);
 
-    // Fetch authors and publishers
-    const [authors] = await pool.query(`SELECT Author_ID, Author_Name FROM AUTHOR`);
-    const [publishers] = await pool.query(`SELECT Publisher_ID, Name FROM PUBLISHER`);
+    const [authors] = await pool.query('SELECT Author_ID, Author_Name FROM AUTHOR');
+    const [publishers] = await pool.query('SELECT Publisher_ID, Name FROM PUBLISHER');
 
     res.render('admin/product_management', { books, orders, error, authors, publishers });
   } catch (err) {
@@ -84,45 +64,48 @@ exports.products = async (req, res) => {
     res.send('Database error');
   }
 };
-
 // Add Book
 exports.addBook = async (req, res) => {
   try {
     const { isbn, title, stock, threshold, category, selling_price, publisher_id } = req.body;
 
+    // Insert book - trigger will enforce non-negative stock
     await pool.query(`
       INSERT INTO BOOK 
       (ISBN, Title, Publication_Year, Quantity_In_Stock, Threshold, Category, Selling_Price, Publisher_ID)
       VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, ?)
     `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price), publisher_id]);
 
-    // Handle single or multiple authors
+    // Insert authors
     let authors = req.body.author_id;
-    if (!Array.isArray(authors)) authors = [authors]; // wrap single selection in array
-
-    // Insert each author
+    if (!Array.isArray(authors)) authors = [authors];
     for (let author_id of authors) {
-      await pool.query(`
-        INSERT INTO BOOK_AUTHOR (ISBN, Author_ID)
-        VALUES (?, ?)
-      `, [isbn, author_id]);
+      await pool.query(`INSERT INTO BOOK_AUTHOR (ISBN, Author_ID) VALUES (?, ?)`, [isbn, author_id]);
     }
 
-    if (parseInt(stock) < parseInt(threshold)) {
-      await pool.query(`
-        INSERT INTO REPLENISHMENT_ORDER 
-        (ISBN, Publisher_ID, Quantity, Order_Date, Status)
-        VALUES (?, ?, 20, CURDATE(), 'Pending')
-      `, [isbn, publisher_id]);
+    // Check if trigger created a pending replenishment order
+    const [orders] = await pool.query(`
+      SELECT * FROM REPLENISHMENT_ORDER WHERE ISBN=? AND Status='Pending'
+    `, [isbn]);
+
+    if (orders.length) {
+      console.log(`📦 Trigger created pending replenishment order(s) for "${title}"`);
     }
 
     res.redirect('/admin/products');
-  } catch (err) {
-    console.error(err);
 
+  } catch (err) {
+    console.error(err.sqlMessage || err);
+
+    // Handle duplicate ISBN
     if (err.code === 'ER_DUP_ENTRY') {
       req.session.error = 'ISBN already exists. Please enter a unique ISBN.';
-    } else {
+    }
+    // Handle trigger error for negative stock
+    else if (err.sqlState === '45000') {
+      req.session.error = err.sqlMessage || 'Invalid stock: cannot be negative.';
+    } 
+    else {
       req.session.error = 'Error adding book';
     }
 
@@ -142,30 +125,32 @@ exports.updateBook = async (req, res) => {
       return res.redirect('/admin/products');
     }
 
+    // Update stock - triggers will handle validation and replenishment
     await pool.query('UPDATE BOOK SET Quantity_In_Stock=? WHERE ISBN=?', [parseInt(stock), isbn]);
 
-    if (parseInt(stock) < book[0].Threshold) {
-      const [existingOrder] = await pool.query(`
-        SELECT 1 FROM REPLENISHMENT_ORDER 
-        WHERE ISBN=? AND Status='Pending'
-      `, [isbn]);
+    // Get any pending replenishment orders created by the trigger
+    const [pendingOrders] = await pool.query(`
+      SELECT * FROM REPLENISHMENT_ORDER WHERE ISBN=? AND Status='Pending'
+    `, [isbn]);
 
-      if (!existingOrder.length) {
-        await pool.query(`
-          INSERT INTO REPLENISHMENT_ORDER 
-          (ISBN, Publisher_ID, Quantity, Order_Date, Status)
-          VALUES (?, ?, 20, CURDATE(), 'Pending')
-        `, [isbn, book[0].Publisher_ID]);
-      }
+    if (pendingOrders.length) {
+      console.log(` Trigger created pending replenishment orders for ${book[0].Title}`);
     }
 
     res.redirect('/admin/products');
   } catch (err) {
-    console.error(err);
-    req.session.error = 'Error updating book';
-    res.redirect('/admin/products');
+  console.error(err.sqlMessage || err);
+
+  if (err.sqlState === '45000') {
+    req.session.error = err.sqlMessage || 'Invalid stock: cannot be negative.';
+  } else {
+    req.session.error = err.sqlMessage || 'Error updating book';
   }
+
+  res.redirect('/admin/products');
+}
 };
+
 
 //Confirm pending replemnshiment orders
 exports.confirmOrder = async (req, res) => {
