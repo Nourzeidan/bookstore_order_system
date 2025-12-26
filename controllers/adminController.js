@@ -210,35 +210,11 @@ exports.searchBooks = async (req, res) => {
       GROUP BY b.ISBN
     `, [`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`]);
 
-    // Auto Create Replenshimentorders for low stock
-    for (const book of books) {
-      // Check if stock is below threshold
-      if (book.stock < book.Threshold) {
-        // Check if a pending order already exists for this book
-        const [existingOrder] = await pool.query(`
-          SELECT 1 FROM REPLENISHMENT_ORDER 
-          WHERE ISBN = ? AND Status = 'Pending'
-        `, [book.ISBN]);
-
-        // If no pending order exists, create one
-        if (!existingOrder.length) {
-          await pool.query(`
-            INSERT INTO REPLENISHMENT_ORDER 
-            (ISBN, Publisher_ID, Quantity, Order_Date, Status)
-            VALUES (?, ?, 20, CURDATE(), 'Pending')
-          `, [book.ISBN, book.Publisher_ID]);
-          
-          console.log(`Auto-created replenishment order for ${book.Title} (ISBN: ${book.ISBN})`);
-        }
-      }
-    }
-    
-    // Fetch all pending orders (including the ones just created)
+    // Fetch all pending orders 
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
     `);
 
-    // Fetch authors and publishers for the dropdowns
     const [authors] = await pool.query(`SELECT Author_ID, Author_Name FROM AUTHOR`);
     const [publishers] = await pool.query(`SELECT Publisher_ID, Name FROM PUBLISHER`);
 
