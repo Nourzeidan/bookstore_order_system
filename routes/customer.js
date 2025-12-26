@@ -4,7 +4,6 @@ const customerController = require('../controllers/customerController');
 const { isCustomer } = require('../middleware/auth');
 
 
-router.get('/logout', customerController.logout);
 
 // --- 2. PROFILE ---
 router.get('/profile', isCustomer, customerController.getProfile);
@@ -16,7 +15,6 @@ router.get('/product_list', isCustomer, customerController.getProductList);
 router.get('/products/search', customerController.searchProducts);
 
 // --- 4. CART ---
-// Note: If you use the Database cart, make sure these names match
 router.post('/cart/add/:isbn', isCustomer, customerController.addToCart);
 router.get('/cart', isCustomer, customerController.viewCart);
 router.post('/cart/remove/:isbn', isCustomer, customerController.removeFromCart);

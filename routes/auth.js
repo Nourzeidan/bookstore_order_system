@@ -22,18 +22,18 @@ router.post('/signup', async (req, res) => {
         return res.render('signup', { error: 'Username must be at least 3 characters long.' });
     }
 
-    // Password Strength Validation
+    // password Strength Validation
     if (password.length < 8) {
         return res.render('signup', { error: 'Password must be at least 8 characters long.' });
     }
 
-    // Email Format Validation (Regex)
+    // email regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         return res.render('signup', { error: 'Please enter a valid email address.' });
     }
 
-    // Phone Number Validation (Numeric check)
+    // phone no only numbers
     if (isNaN(phone) || phone.length < 10) {
         return res.render('signup', { error: 'Please enter a valid numeric phone number.' });
     }

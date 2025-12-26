@@ -147,10 +147,6 @@ exports.viewOrders = async (req, res) => {
         res.status(500).send(err.message);
     }
 };
-exports.logout = (req, res) => {
-    req.session.destroy();
-    res.redirect('/login');
-};
 
 
 // checkout
