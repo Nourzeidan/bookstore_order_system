@@ -1,9 +1,11 @@
 const isAdmin = (req, res, next) => {
-    console.log("Middleware Check -> Role:", req.session.role, "UID:", req.session.userId);
-    if (req.session.user && req.session.user.role === 'Admin') {
+    console.log("Admin Check:", req.session.user);
+
+    if (req.session.user && req.session.user.role === 'admin') {
         return next();
     }
-    res.status(403).send('Access Denied: Admins Only');
+
+    return res.redirect('/login');
 };
 const isCustomer = (req, res, next) => {
     // Check if the user object exists AND the role is 'Customer'

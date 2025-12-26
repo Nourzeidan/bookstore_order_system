@@ -71,7 +71,7 @@ router.post('/login', async (req, res) => {
         );
 
         if (admin.length > 0) {
-            req.session.user = { username: admin[0].Username, role: 'Admin' };
+            req.session.user = { username: admin[0].Username, role: 'admin' };
             console.log("Admin Login Successful!");
             return res.redirect('/admin/dashboard');
         }
