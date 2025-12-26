@@ -96,7 +96,34 @@ router.post('/login', async (req, res) => {
     }
 });
 
-router.get('/logout', (req, res) => {
+// router.get('/logout', (req, res) => {
+//     req.removeFromCart;
+//     req.session.destroy();
+//     res.redirect('/login');
+// });
+router.get('/logout', async (req, res) => {
+    try {
+        // the user is a customer clear their  cart items before destroying the session
+        if (req.session.user && req.session.user.role === 'Customer') {
+            const username = req.session.user.username;
+            
+            // find the cart id for this customer
+            const [[cart]] = await db.execute(
+                'SELECT Cart_ID FROM SHOPPING_CART WHERE Customer_Username = ?',
+                [username]
+            );
+
+            if (cart) {
+                // Remove all items with this cart id
+                await db.execute('DELETE FROM CART_ITEM WHERE Cart_ID = ?', [cart.Cart_ID]);
+                console.log(`LOG: All items cleared from Cart ${cart.Cart_ID} for user ${username}`);
+            }
+        }
+    } catch (err) {
+        console.error("Logout Cart Cleanup Error:", err);
+    }
+
+    // Destroy the session and redirect to login
     req.session.destroy();
     res.redirect('/login');
 });
