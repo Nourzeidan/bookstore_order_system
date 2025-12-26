@@ -118,7 +118,7 @@
         <th>Category</th>
         <th>Author</th>
         <th>Publisher</th>
-        <th>Status</th> <!-- NEW COLUMN -->
+        <th>Status</th> 
         <th>Action</th>
       </tr>
     </thead>
@@ -140,7 +140,6 @@
         <td><%= book.authors %></td>
         <td><%= book.Publisher_Name %></td>
         
-        <!-- NEW STATUS COLUMN -->
         <td>
           <% if (book.stock < book.Threshold) { %>
             <% if (orders.find(o => o.ISBN === book.ISBN && o.Status === 'Pending')) { %>

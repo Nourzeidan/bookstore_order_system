@@ -47,6 +47,21 @@ CREATE TABLE BOOK (
     CONSTRAINT chk_category
         CHECK (Category IN ('Science','Art','Religion','History','Geography'))
 );
+CREATE TABLE BOOK (
+    ISBN VARCHAR(20) PRIMARY KEY,
+    Title VARCHAR(255) NOT NULL,
+    Publication_Year INT,
+    Selling_Price DECIMAL(10,2),
+    Category ENUM('Science','Art','Religion','History','Geography') NOT NULL,
+    Quantity_In_Stock INT DEFAULT 0,
+    Threshold INT DEFAULT 5,
+    Publisher_ID INT,
+
+    -- Relationship with publisher
+    CONSTRAINT fk_book_publisher
+        FOREIGN KEY (Publisher_ID)
+        REFERENCES PUBLISHER(Publisher_ID)
+);
 
 CREATE TABLE BOOK_AUTHOR (
     ISBN VARCHAR(20),

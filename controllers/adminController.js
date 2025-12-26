@@ -14,7 +14,7 @@ exports.dashboard = async (req, res) => {
       FROM REPLENISHMENT_ORDER 
       WHERE Status='Pending'
     `);
-
+    // Render dashboard page and pass the results to EJS template
     res.render('admin/dashboard', {
       totalBooks: booksResult[0].totalBooks,
       totalSales: salesResult[0].totalSales,
@@ -54,7 +54,7 @@ exports.products = async (req, res) => {
     const [orders] = await pool.query(`
       SELECT * FROM REPLENISHMENT_ORDER WHERE Status='Pending'
     `);
-
+    // Fetch all authors and publishers for dropdowns in the form
     const [authors] = await pool.query('SELECT Author_ID, Author_Name FROM AUTHOR');
     const [publishers] = await pool.query('SELECT Publisher_ID, Name FROM PUBLISHER');
 
@@ -76,7 +76,7 @@ exports.addBook = async (req, res) => {
       VALUES (?, ?, YEAR(CURDATE()), ?, ?, ?, ?, ?)
     `, [isbn, title, parseInt(stock), parseInt(threshold), category, parseFloat(selling_price), publisher_id]);
 
-    // Insert authors
+    // Insert authors into BOOK_AUTHOR
     let authors = req.body.author_id;
     if (!Array.isArray(authors)) authors = [authors];
     for (let author_id of authors) {
@@ -160,7 +160,7 @@ exports.confirmOrder = async (req, res) => {
       SELECT * FROM REPLENISHMENT_ORDER 
       WHERE ISBN=? AND Status='Pending'
     `, [isbn]);
-
+     // Confirm the order and update book stock
     if (order.length) {
       await pool.query(`
         UPDATE BOOK b
