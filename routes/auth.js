@@ -96,11 +96,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// router.get('/logout', (req, res) => {
-//     req.removeFromCart;
-//     req.session.destroy();
-//     res.redirect('/login');
-// });
 router.get('/logout', async (req, res) => {
     try {
         // the user is a customer clear their  cart items before destroying the session
