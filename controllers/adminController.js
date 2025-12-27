@@ -231,13 +231,20 @@ exports.reports = async (req, res) => {
     const { date, isbn } = req.query;
 
     // Total sales last month
-    const [totalSalesMonthResult] = await pool.query(`
+    /*const [totalSalesMonthResult] = await pool.query(`
       SELECT IFNULL(SUM(oi.Quantity * oi.Price), 0) AS totalSalesMonth
       FROM ORDERS o
       JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
       WHERE MONTH(o.Order_Date) = MONTH(CURDATE()) - 1
         AND YEAR(o.Order_Date) = YEAR(CURDATE())
-    `);
+    `);*/
+    
+    const [totalSalesMonthResult] = await pool.query(`
+  SELECT IFNULL(SUM(oi.Quantity * oi.Price), 0) AS totalSalesMonth
+  FROM ORDERS o
+  JOIN ORDER_ITEM oi ON o.Order_ID = oi.Order_ID
+  WHERE o.Order_Date >= CURDATE() - INTERVAL 30 DAY
+`);
 
     //Total sales for selected date
     let totalSalesDate = null;
