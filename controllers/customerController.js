@@ -150,6 +150,7 @@ exports.viewOrders = async (req, res) => {
 
 
 // checkout
+// checkout
 exports.getCheckout = (req, res) => {
     const cart = req.session.cart || [];
     res.render('customer/checkout', { cart, error: null });
@@ -183,7 +184,9 @@ exports.postCheckout = async (req, res) => {
                 CI.Quantity, 
                 B.Selling_Price,
                 B.Title,
-                B.Quantity_In_Stock
+                B.Quantity_In_Stock,
+                B.Threshold,
+                B.Publisher_ID
             FROM CART_ITEM CI
             JOIN BOOK B ON CI.ISBN = B.ISBN
             WHERE CI.Cart_ID = ?`,
@@ -200,16 +203,22 @@ exports.postCheckout = async (req, res) => {
         // 3. Validate stock availability for each item
         console.log("Validating stock availability...");
         const outOfStockItems = [];
+        const belowThresholdItems = [];
         
         for (const item of cartItems) {
-            console.log(`  ${item.Title}: Want ${item.Quantity}, Available ${item.Quantity_In_Stock}`);
+            console.log(`  ${item.Title}: Want ${item.Quantity}, Available ${item.Quantity_In_Stock}, Threshold ${item.Threshold}`);
             
+            // Check if not enough stock
             if (item.Quantity_In_Stock < item.Quantity) {
                 outOfStockItems.push({
                     title: item.Title,
                     requested: item.Quantity,
                     available: item.Quantity_In_Stock
                 });
+            }
+            // Check if purchase would bring stock below threshold
+            else if ((item.Quantity_In_Stock - item.Quantity) < item.Threshold) {
+                belowThresholdItems.push(item);
             }
         }
 
@@ -223,7 +232,35 @@ exports.postCheckout = async (req, res) => {
             return res.status(400).send(errorMsg);
         }
 
-        console.log("✓ All items have sufficient stock");
+        // If any items would fall below threshold, create replenishment orders only
+        if (belowThresholdItems.length > 0) {
+            console.log("⚠ Some items would fall below threshold - Creating replenishment orders...");
+            
+            for (const item of belowThresholdItems) {
+                const newStockLevel = item.Quantity_In_Stock - item.Quantity;
+                const replenishQty = (item.Threshold * 2) - newStockLevel;
+                
+                await db.execute(
+                    `INSERT INTO REPLENISHMENT_ORDER (ISBN, Publisher_ID, Quantity, Order_Date, Status)
+                     VALUES (?, ?, ?, CURDATE(), 'Pending')`,
+                    [item.ISBN, item.Publisher_ID, replenishQty]
+                );
+                
+                console.log(`  ✓ Replenishment order created for ${item.Title}: ${replenishQty} units`);
+            }
+            
+            // Return error message to customer
+            let errorMsg = "Sorry, the following items are currently low in stock and need to be restocked:<br>";
+            belowThresholdItems.forEach(item => {
+                errorMsg += `<br>• ${item.Title}`;
+            });
+            errorMsg += "<br><br>A replenishment order has been placed with the publisher. Please check back later.";
+            
+            console.log("=== CHECKOUT STOPPED - REPLENISHMENT NEEDED ===");
+            return res.status(400).send(errorMsg);
+        }
+
+        console.log("✓ All items have sufficient stock and above threshold");
 
         // 4. Calculate total price - Convert string to number
         let totalPrice = 0;
