@@ -1,3 +1,5 @@
+// node tests/integration.test.js
+
 const db = require('../config/database');
 
 async function testConnection() {
